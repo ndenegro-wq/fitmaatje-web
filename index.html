@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FitMaatje</title>
+<meta name="description" content="Persoonlijke coach voor afvallen en sporten">
+<meta name="theme-color" content="#1B5E20">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FitMaatje">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<style>
+:root{
+  --green:#2E7D32; --green-dark:#1B5E20; --green-light:#E8F5E9; --leaf:#33691E;
+  --amber:#F9A825; --red:#C62828; --bg:#F4F7F2; --card:#fff; --text:#1c1c1c; --muted:#5f6660; --line:#dfe6dc;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --green:#66BB6A; --green-dark:#A5D6A7; --green-light:#1f3322; --leaf:#AED581;
+    --bg:#101410; --card:#1a201a; --text:#ecefea; --muted:#a3aba0; --line:#2b352b;
+  }
+}
+:root[data-theme="dark"]{
+  --green:#66BB6A; --green-dark:#A5D6A7; --green-light:#1f3322; --leaf:#AED581;
+  --bg:#101410; --card:#1a201a; --text:#ecefea; --muted:#a3aba0; --line:#2b352b;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--green-dark);color:#fff;padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;font-weight:700;font-size:18px}
+:root[data-theme="dark"] header{color:#0d130d}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) header{color:#0d130d}}
+main{padding:16px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;margin:0 auto}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav button{flex:1;border:0;background:none;color:var(--muted);padding:8px 0 6px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav button span{font-size:21px}
+nav button.on{color:var(--green-dark);font-weight:700}
+nav button.on span{background:var(--green-light);border-radius:14px;padding:0 14px}
+.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+h1{font-size:22px;margin:0 0 12px} h2{font-size:17px;margin:0 0 8px}
+.big{font-size:30px;font-weight:800;color:var(--green-dark)}
+.muted{color:var(--muted);font-size:14px}
+.small{font-size:13px}
+.err{color:var(--red);margin:8px 0}
+.bar{height:10px;background:var(--green-light);border-radius:5px;overflow:hidden;margin:8px 0}
+.bar>div{height:100%;background:var(--green);border-radius:5px}
+.stats{display:flex;gap:8px;margin-top:10px}
+.stat{flex:1;background:var(--green-light);border-radius:10px;padding:8px}
+.stat b{display:block;color:var(--green-dark)}
+.moments{display:flex;gap:6px}
+.moments div{flex:1;text-align:center;border-radius:10px;padding:8px 0;background:var(--green-light);color:var(--green-dark);font-weight:700}
+.moments div small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.moments div.done{background:var(--green);color:#fff}.moments div.done small{color:#fff}
+.moments div.now{outline:2px solid var(--amber)}
+.row{display:flex;gap:8px;align-items:center}
+.grow{flex:1}
+button.btn{border:0;border-radius:24px;background:var(--green);color:#fff;font-weight:600;font-size:16px;padding:14px 18px;width:100%}
+:root[data-theme="dark"] button.btn{color:#0d130d}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) button.btn{color:#0d130d}}
+button.btn.out{background:transparent;color:var(--green-dark);border:1.5px solid var(--green)}
+button.btn:disabled{opacity:.45}
+button.link{border:0;background:none;color:var(--green-dark);font-weight:600;padding:6px 4px}
+button.link.red{color:var(--red)}
+.mic{width:140px;height:140px;border-radius:50%;border:0;background:var(--green);color:#fff;font-size:54px;display:block;margin:12px auto 6px}
+.mic.on{background:var(--red)}
+textarea,input,select{width:100%;font:inherit;color:var(--text);background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px}
+textarea{min-height:110px;resize:vertical}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+.tag{font-size:12px;border-radius:6px;padding:2px 6px;background:var(--green-light);color:var(--green-dark)}
+.tag.off{background:rgba(198,40,40,.12);color:var(--red)}
+.entry .head{display:flex;gap:8px;align-items:center}
+.entry .head b{color:var(--green-dark)}
+.entry ul{margin:6px 0;padding-left:18px}
+.reply{color:var(--leaf);font-size:14px;margin-top:6px}
+.photo{width:100%;max-height:220px;object-fit:cover;border-radius:12px;margin:6px 0;display:block}
+.meal.eaten{background:var(--green-light)}
+.chat{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.bubble{max-width:85%;padding:10px 12px;border-radius:14px;background:var(--card);white-space:pre-wrap}
+.bubble.me{align-self:flex-end;background:var(--green);color:#fff}
+:root[data-theme="dark"] .bubble.me{color:#0d130d}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .bubble.me{color:#0d130d}}
+.vid{display:block;width:100%;text-align:left;margin-top:6px;border:1.5px solid var(--green);border-radius:10px;background:transparent;color:var(--green-dark);padding:8px 10px;font:inherit;font-size:14px}
+.chips button{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:16px;padding:8px 12px;margin:4px 4px 0 0;font:inherit;font-size:14px;text-align:left}
+.composer{display:flex;gap:8px;align-items:flex-end}
+.composer textarea{min-height:48px;height:48px}
+.round{width:48px;height:48px;border-radius:50%;border:0;background:var(--green-light);font-size:20px;flex:none}
+.round.on{background:var(--red);color:#fff}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--green-light);border-top-color:var(--green);border-radius:50%;animation:spin 1s linear infinite;vertical-align:-3px;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hidden{display:none!important}
+.datebar{display:flex;align-items:center;margin-bottom:8px}
+.datebar h1{flex:1;text-align:center;margin:0}
+.datebar button{border:0;background:none;color:var(--green);font-size:20px;padding:8px 12px}
+.install{background:#FFF8E1;color:#5d4600;border-radius:12px;padding:12px;font-size:14px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<header>FitMaatje</header>
+<main id="main"></main>
+<nav id="nav"></nav>
+<input type="file" id="cam" accept="image/*" capture="environment" class="hidden">
+<input type="file" id="gal" accept="image/*" class="hidden">
+
+<script>
+"use strict";
+// ======================================================= storage (IndexedDB, fallback memory)
+const DB = (() => {
+  let dbp = null, mem = {};
+  function open() {
+    if (dbp) return dbp;
+    dbp = new Promise((res) => {
+      try {
+        const r = indexedDB.open("fitmaatje", 1);
+        r.onupgradeneeded = () => r.result.createObjectStore("kv");
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => res(null);
+      } catch (e) { res(null); }
+    });
+    return dbp;
+  }
+  return {
+    async get(k, d) {
+      const db = await open();
+      if (!db) return k in mem ? mem[k] : d;
+      return new Promise((res) => {
+        try {
+          const q = db.transaction("kv").objectStore("kv").get(k);
+          q.onsuccess = () => res(q.result === undefined ? d : q.result);
+          q.onerror = () => res(d);
+        } catch (e) { res(d); }
+      });
+    },
+    async set(k, v) {
+      mem[k] = v;
+      const db = await open();
+      if (!db) return;
+      return new Promise((res) => {
+        try {
+          const t = db.transaction("kv", "readwrite");
+          t.objectStore("kv").put(v, k);
+          t.oncomplete = res; t.onerror = res;
+        } catch (e) { res(); }
+      });
+    },
+  };
+})();
+
+// ======================================================= state
+const DEF = {
+  name: "", apiKey: "", model: "claude-sonnet-5-5", kcal: 1500, protein: 110,
+  moments: "07:30,10:00,12:30,15:30,18:00,20:30",
+  protocol: "Gezond en duurzaam afvallen, gevarieerd eten, voldoende eiwit en groente.",
+  prefs: "",
+};
+let S = { ...DEF }, entries = [], plans = {}, chat = [];
+let tab = "today", viewDate = todayStr(), planDate = null;
+let planBusy = null, planErr = null;
+
+function todayStr(d = new Date()) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function addDays(ds, n) { const d = new Date(ds + "T12:00:00"); d.setDate(d.getDate() + n); return todayStr(d); }
+function hm(d = new Date()) { return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+function toMin(t) { const [h, m] = t.split(":").map(Number); return h * 60 + m; }
+function moments() {
+  return S.moments.split(/[,; ]+/).map((t) => t.trim()).filter((t) => /^\d{1,2}:\d{2}$/.test(t))
+    .map((t) => t.padStart(5, "0")).sort();
+}
+function momentAt(t = hm()) {
+  let best = null, diff = 1e9;
+  moments().forEach((m, i) => { const d = Math.abs(toMin(m) - toMin(t)); if (d <= 60 && d < diff) { best = i + 1; diff = d; } });
+  return best;
+}
+function dayEntries(ds) { return entries.filter((e) => e.date === ds); }
+function sum(ds) {
+  const l = dayEntries(ds);
+  const s = { kcal: 0, protein: 0, sportMin: 0, sportKcal: 0, moments: new Set() };
+  l.forEach((e) => {
+    (e.foods || []).forEach((f) => { s.kcal += f.kcal || 0; s.protein += f.protein || 0; });
+    (e.exercises || []).forEach((x) => { s.sportMin += x.minutes || 0; s.sportKcal += x.kcal || 0; });
+    if ((e.foods || []).length && e.moment) s.moments.add(e.moment);
+  });
+  return s;
+}
+function lastWeight() { for (let i = entries.length - 1; i >= 0; i--) if (entries[i].weight) return entries[i]; return null; }
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtDate = (ds) => new Date(ds + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" });
+
+async function save() {
+  await DB.set("settings", S); await DB.set("entries", entries); await DB.set("plans", plans); await DB.set("chat", chat.slice(-60));
+}
+
+// ======================================================= Claude API (streaming, retries)
+let lastStop = "";
+async function callOnce(system, messages, maxTokens) {
+  if (!S.apiKey) throw new Error("Nog geen API-sleutel ingesteld. Ga naar Instellingen.");
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": S.apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({ model: S.model || DEF.model, max_tokens: maxTokens, system, messages, stream: true }),
+  });
+  if (!r.ok) {
+    let msg = await r.text();
+    try { msg = JSON.parse(msg).error.message; } catch (e) {}
+    const err = new Error(`Coach niet bereikbaar (${r.status}): ${String(msg).slice(0, 300)}`);
+    err.fatal = true; throw err;
+  }
+  const reader = r.body.getReader(), dec = new TextDecoder();
+  let buf = "", out = ""; lastStop = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i;
+    while ((i = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+      if (!line.startsWith("data:")) continue;
+      let o; try { o = JSON.parse(line.slice(5)); } catch (e) { continue; }
+      if (o.type === "content_block_delta" && o.delta && o.delta.type === "text_delta") out += o.delta.text;
+      else if (o.type === "message_delta" && o.delta && o.delta.stop_reason) lastStop = o.delta.stop_reason;
+      else if (o.type === "error") { const e = new Error("Coach-fout: " + (o.error && o.error.message)); e.fatal = true; throw e; }
+    }
+  }
+  return out.trim();
+}
+async function callClaude(system, messages, maxTokens = 1500) {
+  let last;
+  for (let a = 0; a < 3; a++) {
+    try { return await callOnce(system, messages, maxTokens); }
+    catch (e) { if (e.fatal) throw e; last = e; await new Promise((r) => setTimeout(r, 1500 * (a + 1))); }
+  }
+  throw new Error("Geen verbinding met de coach (" + (last && last.message) + "). Houd de app open en probeer opnieuw.");
+}
+async function callJson(system, user, maxTokens, imgB64) {
+  let raw = "";
+  for (let a = 0; a < 2; a++) {
+    const extra = a ? "\n\nBELANGRIJK: antwoord direct en uitsluitend met het JSON-object, beginnend met { en eindigend met }." : "";
+    const content = imgB64
+      ? [{ type: "image", source: { type: "base64", media_type: "image/jpeg", data: imgB64 } }, { type: "text", text: user + extra }]
+      : user + extra;
+    raw = await callClaude(system, [{ role: "user", content }], a ? maxTokens * 2 : maxTokens);
+    const s = raw.indexOf("{"), e = raw.lastIndexOf("}");
+    if (s >= 0 && e > s) { try { return JSON.parse(raw.slice(s, e + 1)); } catch (x) {} }
+  }
+  throw new Error("Coach gaf geen bruikbaar antwoord (" + (lastStop === "max_tokens" ? "te lang" : raw ? raw.slice(0, 100) : "leeg") + "). Probeer opnieuw.");
+}
+
+function coachSystem() {
+  return `Je bent FitMaatje, de persoonlijke voedings- en sportcoach van ${S.name || "de gebruiker"}. Je spreekt Nederlands: direct, warm, kort en concreet.
+Plan en afspraken: ${S.protocol}
+Dagdoel: ${S.kcal} kcal en circa ${S.protein} g eiwit. Eetmomenten: ${moments().map((m, i) => `${i + 1}=${m}`).join(", ")}.
+Voorkeuren / niet eten: ${S.prefs || "geen opgegeven"}.
+Je bent een coach, geen arts: bij klachten, zwangerschap, duizeligheid of pijn verwijs je naar huisarts of diëtist. Moedig nooit extreem weinig eten of overtraining aan.`;
+}
+function contextText(days = 2) {
+  const now = new Date();
+  let s = `Nu: ${now.toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} ${hm(now)}\n`;
+  const p = plans[todayStr()];
+  if (p) s += `Eetschema vandaag (${p.theme}): ${p.meals.map((m) => `${m.moment}=${m.title} ${mealKcal(m)} kcal`).join("; ")}\n`;
+  const w = lastWeight(); if (w) s += `Laatste gewicht: ${w.weight} kg op ${w.date}\n`;
+  for (let k = days - 1; k >= 0; k--) {
+    const ds = addDays(todayStr(), -k), l = dayEntries(ds); if (!l.length) continue;
+    const t = sum(ds);
+    s += `\n${k ? ds : "VANDAAG"}: ${t.kcal} kcal, ${t.protein} g eiwit, sport ${t.sportMin} min, momenten ${[...t.moments].sort().join(",")}\n`;
+    if (k <= 1) l.forEach((e) => {
+      s += `  ${e.time} ` + (e.foods || []).map((f) => `${f.name} ${f.amount} (${f.kcal} kcal)`).join("; ")
+        + ((e.exercises || []).length ? " sport: " + e.exercises.map((x) => `${x.name} ${x.detail} ${x.minutes} min`).join("; ") : "")
+        + (e.weight ? ` gewicht ${e.weight} kg` : "") + "\n";
+    });
+  }
+  return s;
+}
+
+async function processLog(text, photo) {
+  const now = new Date(), fallback = momentAt(hm(now));
+  const base = { id: Date.now(), ts: Date.now(), date: todayStr(now), time: hm(now), text, photo: photo ? photo.thumb : null };
+  if (!S.apiKey) return { ...base, moment: fallback, foods: [], exercises: [], weight: null, reply: "Opgeslagen. Stel je API-sleutel in bij Instellingen om calorieën te berekenen." };
+  const photoNote = photo ? `Er is een FOTO van het eten bijgevoegd. Herken alle onderdelen en schat de portiegroottes (gebruik bord, bestek, verpakking of hand als referentie). Combineer met de tekst als die er is (tekst gaat voor bij twijfel). Zet in reply kort dat het een schatting op basis van de foto is.` : "";
+  const user = `${contextText(2)}
+
+Ingesproken tekst van ${S.name || "de gebruiker"}:
+«${text || "(geen tekst, alleen foto)"}»
+${photoNote}
+
+Zet dit om naar precies één JSON-object (geen tekst eromheen) met deze velden:
+{"foods":[{"name":"","amount":"","kcal":0,"protein_g":0}],"exercises":[{"name":"","detail":"","minutes":0,"kcal":0}],"weight_kg":null,"moment":null,"reply":""}
+Regels:
+- foods: alles wat gegeten wordt/werd. Realistische kcal en eiwit voor Nederlandse porties (NEVO). amount = hoeveelheid zoals genoemd of geschat.
+- exercises: sport/oefeningen; detail bijv. "3x12" of "5 km"; schat minuten en kcal.
+- weight_kg alleen als gewicht genoemd wordt.
+- moment: nummer eetmoment (1-${moments().length}) op basis van tijd en tekst; null als buiten schema of geen eten.
+- reply: max 3 korte zinnen: wat je noteerde, wat er vandaag nog over is (kcal/eiwit), één concrete tip. Eerlijk maar vriendelijk als iets buiten schema valt.`;
+  let o;
+  try { o = await callJson(coachSystem(), user, 4000, photo ? photo.b64 : null); }
+  catch (e) { return { ...base, moment: fallback, foods: [], exercises: [], weight: null, reply: "Opgeslagen, maar berekenen lukte niet: " + e.message }; }
+  const foods = (o.foods || []).map((f) => ({ name: f.name || "", amount: f.amount || "", kcal: Math.round(+f.kcal || 0), protein: Math.round(+f.protein_g || +f.protein || 0) }));
+  const exercises = (o.exercises || []).map((x) => ({ name: x.name || "", detail: x.detail || "", minutes: Math.round(+x.minutes || 0), kcal: Math.round(+x.kcal || 0) }));
+  let moment = o.moment == null ? (foods.length ? fallback : null) : +o.moment;
+  if (!(moment >= 1 && moment <= moments().length)) moment = foods.length ? fallback : null;
+  const weight = o.weight_kg && +o.weight_kg > 0 ? +o.weight_kg : null;
+  return { ...base, moment, foods, exercises, weight, reply: o.reply || "" };
+}
+
+// ======================================================= meal plans
+const mealKcal = (m) => (m.foods || []).reduce((a, f) => a + (f.kcal || 0), 0);
+const mealProt = (m) => (m.foods || []).reduce((a, f) => a + (f.protein || 0), 0);
+function openMoments(ds) {
+  const all = moments().map((t, i) => [i + 1, t]);
+  if (ds !== todayStr()) return all;
+  const now = toMin(hm()) - 20, eaten = sum(ds).moments;
+  return all.filter(([n, t]) => toMin(t) > now && !eaten.has(n));
+}
+function defaultPlanDate() { return openMoments(todayStr()).length ? todayStr() : addDays(todayStr(), 1); }
+function normMeal(m, fb) {
+  return { moment: +m.moment || fb, time: m.time || "", title: m.title || "", note: m.note || "",
+    foods: (m.foods || []).map((f) => ({ name: f.name || "", amount: f.amount || "", kcal: Math.round(+f.kcal || 0), protein: Math.round(+f.protein_g || +f.protein || 0) })) };
+}
+function planRules(open, kcal, prot) {
+  return `Eisen:
+- Plan precies deze eetmomenten (nummer=tijd): ${open.map(([n, t]) => `${n}=${t}`).join(", ")}.
+- Samen ${kcal} kcal (marge ±40) en minimaal ${prot} g eiwit. Grotere maaltijden op hoofdmomenten, kleine tussendoortjes.
+- Volg het plan: ${S.protocol}
+- Wissel de eiwitbron af t.o.v. de afgelopen dagen (kip, vis, ei, kwark/skyr, mager vlees, peulvruchten/tofu).
+- Gewone, betaalbare supermarktproducten (Nederland of Spanje). Simpele bereiding, max 15 min doordeweeks.
+- Concrete hoeveelheden (gram/stuks/el), kcal en eiwit realistisch volgens NEVO.
+- Voorkeuren / niet eten: ${S.prefs || "geen opgegeven"}`;
+}
+async function generatePlan(ds, wish) {
+  const open = openMoments(ds);
+  if (!open.length) throw new Error("De eetmomenten van vandaag zijn voorbij. Kies ▶ voor morgen.");
+  const partial = open.length < moments().length;
+  const eaten = ds === todayStr() ? sum(ds) : { kcal: 0, protein: 0 };
+  const kcal = Math.max(200, S.kcal - eaten.kcal), prot = Math.max(15, S.protein - eaten.protein);
+  const recent = [1, 2, 3, 4].map((k) => plans[addDays(ds, -k)]).filter(Boolean)
+    .map((p) => `${p.date}: ${p.theme} (${p.meals.map((m) => m.title).join(", ")})`).join("; ") || "geen";
+  const user = `Maak een eetschema voor ${S.name || "de gebruiker"} voor ${fmtDate(ds)} (${ds}). Het is nu ${todayStr()} ${hm()}.
+${partial ? `Een deel van de dag is al voorbij; plan alleen de resterende momenten. Vandaag al gegeten: ${eaten.kcal} kcal, ${eaten.protein} g eiwit.` : ""}
+${planRules(open, kcal, prot)}
+Recente schema's (niet herhalen): ${recent}
+${wish ? "Extra wens: " + wish : ""}
+
+Antwoord met alleen één JSON-object:
+{"theme":"korte naam eiwitfocus","tip":"1 korte praktische tip","meals":[{"moment":${open[0][0]},"time":"${open[0][1]}","title":"","foods":[{"name":"","amount":"","kcal":0,"protein_g":0}],"note":"max 1 zin bereiding"}]}`;
+  const o = await callJson("Je bent een Nederlandse voedingscoach die nauwkeurige, haalbare dagmenu's maakt. Antwoord compact.", user, 6000);
+  let meals = (o.meals || []).map((m, i) => normMeal(m, i + 1));
+  const f = meals.filter((m) => open.some(([n]) => n === m.moment)); if (f.length) meals = f;
+  if (!meals.length) throw new Error("Leeg schema ontvangen, probeer opnieuw.");
+  meals.sort((a, b) => a.moment - b.moment);
+  plans[ds] = { date: ds, theme: o.theme || "", tip: o.tip || "", meals };
+  Object.keys(plans).forEach((k) => { if (k < addDays(todayStr(), -30)) delete plans[k]; });
+  await save();
+}
+async function swapMeal(ds, moment, wish) {
+  const p = plans[ds], old = p.meals.find((m) => m.moment === moment);
+  const user = `Geef een ander voorstel voor eetmoment ${moment} (${old.time}).
+Huidig: ${old.title} — ${old.foods.map((f) => f.name + " " + f.amount).join(", ")} (${mealKcal(old)} kcal, ${mealProt(old)} g eiwit).
+Ongeveer dezelfde kcal (±30), minstens evenveel eiwit, maar duidelijk iets anders. Rest van de dag: ${p.meals.filter((m) => m.moment !== moment).map((m) => m.title).join("; ")}.
+${planRules([[moment, old.time]], mealKcal(old), mealProt(old))}
+${wish ? "Wens: " + wish : ""}
+Antwoord met alleen één JSON-object: {"moment":${moment},"time":"${old.time}","title":"","foods":[{"name":"","amount":"","kcal":0,"protein_g":0}],"note":""}`;
+  const m = normMeal(await callJson("Je bent een Nederlandse voedingscoach.", user, 4000), moment);
+  m.moment = moment; m.time = old.time;
+  p.meals = p.meals.map((x) => (x.moment === moment ? m : x));
+  await save();
+}
+function runPlan(label, fn) {
+  if (planBusy) return;
+  planBusy = label; planErr = null; render();
+  fn().catch((e) => { planErr = e.message || String(e); }).finally(() => { planBusy = null; render(); });
+}
+
+// ======================================================= coach chat
+function splitVideos(t) {
+  const re = /\[\[\s*oefening\s*:\s*([^|\]]+?)\s*(?:\|\s*([^\]]+?))?\s*\]\]/gi, vids = [];
+  let m; while ((m = re.exec(t))) {
+    const name = m[1].trim(), q = (m[2] || "").replace(/["“”]/g, "").trim() || name + " techniek uitleg";
+    if (!vids.some((v) => v.name.toLowerCase() === name.toLowerCase())) vids.push({ name, q });
+  }
+  return [t.replace(re, "").trim(), vids];
+}
+const ytUrl = (q) => "https://www.youtube.com/results?search_query=" + encodeURIComponent(q);
+let chatBusy = false;
+async function ask(q) {
+  chat.push({ me: true, t: q }); chatBusy = true; render(); scrollEnd();
+  const msgs = []; let expectUser = true;
+  chat.slice(-11, -1).forEach((m) => { if (m.me === expectUser) { msgs.push({ role: m.me ? "user" : "assistant", content: m.t }); expectUser = !expectUser; } });
+  if (!expectUser) msgs.push({ role: "assistant", content: "Oké." });
+  msgs.push({ role: "user", content: `Actuele gegevens:\n${contextText(7)}\n\nVraag: ${q}` });
+  let a;
+  try {
+    a = await callClaude(coachSystem() + `
+
+Antwoord kort (max ~120 woorden) tenzij om een schema of uitleg wordt gevraagd. Geen markdown-koppen of sterretjes.
+Noem je concrete oefeningen, zet dan helemaal onderaan per oefening één regel in exact dit formaat:
+[[oefening: <Nederlandse naam> | <Engelse zoekterm voor een techniekvideo, bijv. "squat proper form">]]
+De app maakt daar videoknoppen van.`, msgs, 6000);
+  } catch (e) { a = e.message; }
+  chat.push({ me: false, t: a || "Ik kreeg geen antwoord terug. Probeer het nog eens." });
+  chatBusy = false; await save(); render(); scrollEnd();
+}
+const scrollEnd = () => setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 50);
+
+// ======================================================= speech (Safari/Chrome) + photos
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, recActive = false, recTarget = null;
+function startDictation(targetId, btn) {
+  if (!SR) { alert("Inspreken via de app werkt niet in deze browser. Tik in het tekstvak en gebruik de 🎤 van je toetsenbord."); return; }
+  stopDictation();
+  recTarget = targetId; recActive = true;
+  rec = new SR(); rec.lang = "nl-NL"; rec.continuous = true; rec.interimResults = true;
+  const el = document.getElementById(targetId); const base = el.value ? el.value + " " : "";
+  let finalText = "";
+  rec.onresult = (ev) => {
+    let interim = "";
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      if (ev.results[i].isFinal) finalText += ev.results[i][0].transcript + " ";
+      else interim += ev.results[i][0].transcript;
+    }
+    const t = document.getElementById(recTarget); if (t) t.value = (base + finalText + interim).trimStart();
+  };
+  rec.onend = () => { if (recActive) { try { rec.start(); } catch (e) { stopDictation(); } } };
+  rec.onerror = (e) => { if (e.error === "not-allowed" || e.error === "service-not-allowed") { stopDictation(); alert("Geef de microfoon toestemming (Instellingen › Safari › Microfoon) of gebruik de 🎤 van je toetsenbord."); } };
+  try { rec.start(); } catch (e) {}
+  markMic();
+}
+function stopDictation() { recActive = false; if (rec) { try { rec.stop(); } catch (e) {} } rec = null; markMic(); }
+function markMic() {
+  document.querySelectorAll("[data-mic]").forEach((b) => {
+    const on = recActive && b.dataset.mic === recTarget;
+    b.classList.toggle("on", on); b.textContent = on ? "■" : "🎤";
+  });
+}
+async function readPhoto(file) {
+  const url = URL.createObjectURL(file);
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+  const draw = (max, q) => {
+    const sc = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); return c.toDataURL("image/jpeg", q);
+  };
+  const full = draw(1280, 0.82), thumb = draw(560, 0.7);
+  URL.revokeObjectURL(url);
+  return { b64: full.split(",")[1], thumb };
+}
+
+// ======================================================= views
+const TABS = [["today", "🏠", "Vandaag"], ["plan", "🍽", "Schema"], ["log", "🎤", "Inspreken"], ["coach", "💬", "Coach"], ["settings", "⚙️", "Instellingen"]];
+function renderNav() {
+  document.getElementById("nav").innerHTML = TABS.map(([id, ic, l]) =>
+    `<button class="${tab === id ? "on" : ""}" onclick="go('${id}')"><span>${ic}</span>${l}</button>`).join("");
+}
+function go(t) { if (t !== tab) stopDictation(); tab = t; render(); window.scrollTo(0, 0); }
+
+function entryHTML(e) {
+  const kc = (e.foods || []).reduce((a, f) => a + f.kcal, 0);
+  const tag = (e.foods || []).length ? (e.moment ? `Moment ${e.moment}` : "Buiten schema") : (e.exercises || []).length ? "Sport" : e.weight ? "Gewicht" : "Notitie";
+  return `<div class="card entry">
+    <div class="head"><b>${esc(e.time)}</b><span class="tag ${tag === "Buiten schema" ? "off" : ""}">${tag}</span><span class="grow"></span>${kc ? `<b>${kc} kcal</b>` : ""}</div>
+    ${e.photo ? `<img class="photo" src="${e.photo}" alt="Foto van eten">` : ""}
+    ${(e.foods || []).length ? `<ul>${e.foods.map((f) => `<li>${esc(f.name)}${f.amount ? ` (${esc(f.amount)})` : ""} — ${f.kcal} kcal, ${f.protein} g eiwit</li>`).join("")}</ul>` : ""}
+    ${(e.exercises || []).map((x) => `<div class="row small"><span class="grow">🏋 ${esc(x.name)} ${esc(x.detail)} — ${x.minutes} min, ~${x.kcal} kcal</span><a class="link" style="color:var(--green-dark);font-weight:600;text-decoration:none" href="${ytUrl(x.name + " techniek uitleg")}" target="_blank" rel="noopener">▶ Voorbeeld</a></div>`).join("")}
+    ${e.weight ? `<div>⚖️ ${e.weight} kg</div>` : ""}
+    ${e.reply ? `<div class="reply">${esc(e.reply)}</div>` : ""}
+    ${e.text ? `<div class="muted small" style="margin-top:6px">“${esc(e.text)}”</div>` : ""}
+    <button class="link red small" onclick="delEntry(${e.id})">Verwijderen</button>
+  </div>`;
+}
+async function delEntry(id) { if (!confirm("Deze regel verwijderen?")) return; entries = entries.filter((e) => e.id !== id); await save(); render(); }
+
+function viewToday() {
+  const s = sum(viewDate), left = S.kcal - s.kcal, pct = Math.min(100, (s.kcal / S.kcal) * 100);
+  const isToday = viewDate === todayStr(), nowM = isToday ? momentAt() : null, w = lastWeight();
+  const list = dayEntries(viewDate).slice().reverse();
+  const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+  return `
+  ${!standalone ? `<div class="install">📲 Tip: tik in Safari op <b>Delen</b> → <b>Zet op beginscherm</b>. Dan werkt FitMaatje als een echte app.</div>` : ""}
+  ${!S.apiKey ? `<div class="card"><h2>Welkom bij FitMaatje 👋</h2><div class="muted">Stel eerst je naam, doelen en API-sleutel in.</div><br><button class="btn" onclick="go('settings')">Naar instellingen</button></div>` : ""}
+  <div class="datebar"><button onclick="viewDate=addDays(viewDate,-1);render()">◀</button><h1>${isToday ? "Vandaag" : fmtDate(viewDate)}</h1><button onclick="if(viewDate<todayStr()){viewDate=addDays(viewDate,1);render()}">▶</button></div>
+  <div class="card">
+    <div class="big">${s.kcal} / ${S.kcal} kcal</div>
+    <div class="bar"><div style="width:${pct}%;background:${s.kcal > S.kcal ? "var(--red)" : s.kcal > S.kcal * 0.9 ? "var(--amber)" : "var(--green)"}"></div></div>
+    <div class="${left < 0 ? "err" : "muted"}" style="margin:0">${left >= 0 ? `Nog ${left} kcal over` : `${-left} kcal boven je doel`}</div>
+    <div class="stats">
+      <div class="stat"><span class="small muted">Eiwit</span><b>${s.protein}/${S.protein} g</b></div>
+      <div class="stat"><span class="small muted">Sport</span><b>${s.sportMin} min</b></div>
+      <div class="stat"><span class="small muted">Verbrand</span><b>${s.sportKcal} kcal</b></div>
+    </div>
+  </div>
+  <div class="card"><h2>Eetmomenten</h2>
+    <div class="moments">${moments().map((m, i) => `<div class="${s.moments.has(i + 1) ? "done" : ""} ${nowM === i + 1 ? "now" : ""}">${i + 1}<small>${m}</small></div>`).join("")}</div>
+    ${w ? `<div class="muted" style="margin-top:10px">Laatste gewicht: ${w.weight} kg (${w.date})</div>` : ""}
+  </div>
+  <div class="row" style="margin-bottom:12px"><button class="btn" style="flex:2" onclick="go('log')">🎤 Inspreken</button><button class="btn" style="flex:1.4" onclick="takePhoto()">📷 Foto</button></div>
+  ${list.length ? list.map(entryHTML).join("") : `<div class="muted">Nog niets gelogd.</div>`}`;
+}
+
+let logBusy = false, logErr = null, lastLogged = null;
+function viewLog() {
+  return `<h1>Wat ga je eten of doen?</h1>
+  <div class="muted">Spreek in wat je eet, je training of je gewicht — of maak een foto van je bord. Je kunt ook eerst iets zeggen (bijv. “half opgegeten”) en dan de foto maken.</div>
+  ${SR ? `<button class="mic" data-mic="logText" onclick="recActive&&recTarget==='logText'?stopDictation():startDictation('logText')">🎤</button>
+  <div class="muted" style="text-align:center">Tik, praat, tik op ■ als je klaar bent</div>` :
+  `<div class="card small" style="margin-top:12px">Tik in het tekstvak en gebruik de <b>🎤 van je toetsenbord</b> om in te spreken.</div>`}
+  <div class="row" style="margin:14px 0"><button class="btn" onclick="takePhoto()" ${logBusy ? "disabled" : ""}>📷 Foto maken</button><button class="btn out" onclick="pickPhoto()" ${logBusy ? "disabled" : ""}>🖼 Galerij</button></div>
+  <textarea id="logText" placeholder="Bijv. ‘twee boterhammen met kipfilet en een appel’ of ‘30 minuten gewandeld’">${esc(window._logDraft || "")}</textarea>
+  <div class="row" style="margin-top:10px"><button class="btn out" style="flex:1" onclick="document.getElementById('logText').value='';window._logDraft=''">Wissen</button>
+  <button class="btn" style="flex:2" onclick="submitLog()" ${logBusy ? "disabled" : ""}>${logBusy ? '<span class="spinner"></span>Bezig…' : "Opslaan & berekenen"}</button></div>
+  ${logErr ? `<div class="err">${esc(logErr)}</div>` : ""}
+  ${lastLogged ? `<h2 style="margin-top:18px">Genoteerd</h2>${entryHTML(lastLogged)}` : ""}`;
+}
+async function submitLog(photo) {
+  const el = document.getElementById("logText"), text = (el ? el.value : window._logDraft || "").trim();
+  if (!text && !photo) return;
+  stopDictation(); window._logDraft = text; logBusy = true; logErr = null; render();
+  try {
+    const e = await processLog(text, photo);
+    entries.push(e); entries.sort((a, b) => a.ts - b.ts); await save();
+    lastLogged = e; window._logDraft = "";
+  } catch (x) { logErr = x.message; }
+  logBusy = false; render();
+}
+function takePhoto() { const el = document.getElementById("logText"); if (el) window._logDraft = el.value; if (tab !== "log") go("log"); document.getElementById("cam").click(); }
+function pickPhoto() { const el = document.getElementById("logText"); if (el) window._logDraft = el.value; document.getElementById("gal").click(); }
+async function onPhoto(ev) {
+  const f = ev.target.files && ev.target.files[0]; ev.target.value = ""; if (!f) return;
+  if (tab !== "log") go("log");
+  logBusy = true; logErr = null; render();
+  try { const p = await readPhoto(f); logBusy = false; await submitLog(p); }
+  catch (e) { logBusy = false; logErr = "Foto lezen mislukt: " + e.message; render(); }
+}
+document.getElementById("cam").addEventListener("change", onPhoto);
+document.getElementById("gal").addEventListener("change", onPhoto);
+
+function viewPlan() {
+  if (!planDate) planDate = defaultPlanDate();
+  const ds = planDate, p = plans[ds], open = openMoments(ds), done = sum(ds).moments, isToday = ds === todayStr();
+  const title = isToday ? "Eetschema vandaag" : ds === addDays(todayStr(), 1) ? "Eetschema morgen" : fmtDate(ds);
+  let h = `<div class="datebar"><button onclick="planDate=addDays(planDate,-1);render()">◀</button><h1>${title}</h1><button onclick="if(planDate<addDays(todayStr(),1)){planDate=addDays(planDate,1);render()}">▶</button></div>`;
+  if (!S.apiKey) h += `<div class="err">Stel eerst je API-sleutel in bij Instellingen.</div>`;
+  if (planBusy) h += `<div class="card"><span class="spinner"></span>${esc(planBusy)} <div class="muted small">Duurt ±30 sec. Houd de app open.</div></div>`;
+  if (planErr) h += `<div class="err">${esc(planErr)}</div>`;
+  if (!p && !planBusy) h += `<div class="muted" style="margin-bottom:12px">${isToday && !open.length ? "De eetmomenten van vandaag zijn voorbij. Tik op ▶ voor morgen."
+    : isToday && open.length < moments().length ? `Ik plan alleen de momenten die nog komen (${open.map((o) => o[1]).join(", ")}) en houd rekening met wat je al at.`
+    : "Nog geen schema voor deze dag. Geef eventueel een wens op en tik op Maak schema."}</div>`;
+  if (p) {
+    const kc = p.meals.reduce((a, m) => a + mealKcal(m), 0), pr = p.meals.reduce((a, m) => a + mealProt(m), 0);
+    h += `<div class="card"><h2 style="color:var(--green-dark)">${esc(p.theme || "Dagmenu")}</h2><div class="muted">${kc} kcal · ${pr} g eiwit · ${[...done].length}/${p.meals.length} gegeten</div>${p.tip ? `<div style="margin-top:6px">💡 ${esc(p.tip)}</div>` : ""}</div>`;
+    p.meals.forEach((m) => {
+      const eaten = done.has(m.moment);
+      h += `<div class="card meal ${eaten ? "eaten" : ""}">
+        <div class="row"><b style="color:var(--green-dark)">${m.moment} · ${esc(m.time)}</b><span class="grow"><b>${esc(m.title)}</b></span><b>${mealKcal(m)} kcal</b></div>
+        <ul>${m.foods.map((f) => `<li>${esc(f.name)} — ${esc(f.amount)} <span class="muted small">(${f.kcal} kcal, ${f.protein} g)</span></li>`).join("")}</ul>
+        ${m.note ? `<div class="reply">${esc(m.note)}</div>` : ""}
+        <div class="row" style="margin-top:8px">
+          ${eaten ? `<b style="color:var(--green)">✓ Gegeten</b>` : isToday ? `<button class="btn" style="padding:10px" onclick="ateMeal(${m.moment})">✓ Gegeten</button>` : ""}
+          ${!eaten ? `<button class="btn out" style="padding:10px" onclick="runPlan('Ander voorstel voor moment ${m.moment}…',()=>swapMeal('${ds}',${m.moment},wishVal()))" ${planBusy ? "disabled" : ""}>↻ Iets anders</button>` : ""}
+        </div></div>`;
+    });
+    h += `<button class="btn out" onclick="toggleShop()">🛒 Boodschappenlijst</button><div id="shop" class="card hidden" style="margin-top:10px;white-space:pre-line">${esc(shopList(p))}</div><br>`;
+  }
+  h += `<div class="card"><h2>${p ? "Heel nieuw schema" : "Schema maken"}</h2>
+    <div class="composer"><textarea id="wish" placeholder="Wens (optioneel), bijv. ‘vandaag vis’, ‘uit eten ’s avonds’">${esc(window._wish || "")}</textarea>
+    ${SR ? `<button class="round" data-mic="wish" onclick="recActive&&recTarget==='wish'?stopDictation():startDictation('wish')">🎤</button>` : ""}</div><br>
+    <button class="btn" onclick="stopDictation();runPlan('Schema maken…',()=>generatePlan('${ds}',wishVal()))" ${planBusy || !S.apiKey || !open.length ? "disabled" : ""}>${p ? "Maak nieuw schema" : "Maak schema"}</button></div>`;
+  return h;
+}
+function wishVal() { const w = document.getElementById("wish"); window._wish = w ? w.value : ""; return window._wish; }
+function toggleShop() { document.getElementById("shop").classList.toggle("hidden"); }
+function shopList(p) {
+  const g = {}; p.meals.forEach((m) => m.foods.forEach((f) => { const k = f.name.toLowerCase().trim(); (g[k] = g[k] || { n: f.name, a: [] }).a.push(f.amount); }));
+  return Object.values(g).map((x) => `• ${x.n}: ${x.a.join(" + ")}`).join("\n");
+}
+async function ateMeal(moment) {
+  const p = plans[planDate], m = p.meals.find((x) => x.moment === moment), now = new Date();
+  entries.push({ id: Date.now(), ts: Date.now(), date: todayStr(now), time: hm(now), text: "Volgens schema: " + m.title, moment, foods: m.foods, exercises: [], weight: null,
+    reply: `Volgens schema gegeten. Nog ${S.kcal - sum(todayStr()).kcal - mealKcal(m)} kcal over vandaag.`, photo: null });
+  await save(); render();
+}
+
+function viewCoach() {
+  let h = `<div class="row"><h1 class="grow">Coach</h1><button class="link" onclick="if(confirm('Gesprek wissen?')){chat=[];save();render()}">Wissen</button></div>`;
+  if (!chat.length) h += `<div class="muted">Vraag wat je wilt. Bijvoorbeeld:</div><div class="chips">${[
+    "Wat kan ik vanavond nog eten met wat ik over heb?", "Geef me een training van 20 minuten thuis met voorbeelden.", "Hoe ging mijn week?",
+  ].map((s) => `<button onclick="document.getElementById('q').value=this.textContent">${esc(s)}</button>`).join("")}</div><br>`;
+  h += `<div class="chat">${chat.map((m) => {
+    if (m.me) return `<div class="bubble me">${esc(m.t)}</div>`;
+    const [body, vids] = splitVideos(m.t);
+    return `<div class="bubble">${esc(body)}${vids.length ? `<div class="muted small" style="margin-top:8px">Bekijk hoe het moet:</div>` +
+      vids.map((v) => `<a class="vid" style="text-decoration:none" href="${ytUrl(v.q)}" target="_blank" rel="noopener">▶ ${esc(v.name)}</a>`).join("") : ""}</div>`;
+  }).join("")}${chatBusy ? `<div class="muted"><span class="spinner"></span>Coach denkt na…</div>` : ""}</div>
+  <div class="composer">${SR ? `<button class="round" data-mic="q" onclick="recActive&&recTarget==='q'?stopDictation():startDictation('q')">🎤</button>` : ""}
+  <textarea id="q" placeholder="Typ of spreek je vraag"></textarea>
+  <button class="round" style="background:var(--green);color:#fff" onclick="sendQ()" ${chatBusy ? "disabled" : ""}>➤</button></div>`;
+  return h;
+}
+function sendQ() { const q = document.getElementById("q").value.trim(); if (!q || chatBusy) return; stopDictation(); ask(q); }
+
+function viewSettings() {
+  const f = (id, label, val, type = "text", extra = "") => `<label for="${id}">${label}</label><input id="${id}" type="${type}" value="${esc(val)}" ${extra}>`;
+  return `<h1>Instellingen</h1>
+  <div class="card"><h2>Over jou</h2>
+    ${f("s_name", "Naam", S.name)}
+    <div class="row"><div class="grow">${f("s_kcal", "kcal per dag", S.kcal, "number", 'inputmode="numeric"')}</div><div class="grow">${f("s_prot", "eiwit (g)", S.protein, "number", 'inputmode="numeric"')}</div></div>
+    ${f("s_mom", "Eetmomenten (bijv. 07:30,10:00,12:30,15:30,18:00,20:30)", S.moments)}
+    <label for="s_proto">Plan / afspraken met coach of diëtist</label><textarea id="s_proto">${esc(S.protocol)}</textarea>
+    <label for="s_prefs">Wat ik lekker vind / niet eet / allergieën</label><textarea id="s_prefs" style="min-height:80px">${esc(S.prefs)}</textarea>
+  </div>
+  <div class="card"><h2>Coach (Claude)</h2>
+    ${f("s_key", "Anthropic API-sleutel (sk-ant-…)", S.apiKey, "password", 'autocomplete="off" autocapitalize="off" spellcheck="false"')}
+    <div class="muted small" style="margin-top:6px">Je sleutel blijft alleen op deze telefoon en gaat rechtstreeks naar Anthropic.</div>
+    ${f("s_model", "Model", S.model, "text", 'autocapitalize="off" spellcheck="false"')}
+  </div>
+  <button class="btn" onclick="saveSettings()">Opslaan</button>
+  <div id="saved" class="muted" style="margin-top:8px"></div>
+  <div class="card" style="margin-top:16px"><h2>Gegevens</h2><div class="muted small">Alles wordt alleen op deze telefoon bewaard (in Safari). Verwijder je de app van je beginscherm of wis je Safari-gegevens, dan ben je ze kwijt.</div><br>
+  <button class="btn out" onclick="exportData()">Back-up downloaden</button></div>`;
+}
+async function saveSettings() {
+  const v = (id) => document.getElementById(id).value;
+  S.name = v("s_name").trim(); S.kcal = parseInt(v("s_kcal")) || DEF.kcal; S.protein = parseInt(v("s_prot")) || DEF.protein;
+  S.moments = v("s_mom").trim() || DEF.moments; S.protocol = v("s_proto").trim() || DEF.protocol; S.prefs = v("s_prefs").trim();
+  S.apiKey = v("s_key").trim(); S.model = v("s_model").trim() || DEF.model;
+  await save(); document.getElementById("saved").textContent = "Opgeslagen ✓";
+}
+function exportData() {
+  const blob = new Blob([JSON.stringify({ settings: { ...S, apiKey: "" }, entries, plans }, null, 1)], { type: "application/json" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "fitmaatje-backup-" + todayStr() + ".json"; a.click();
+}
+
+function render() {
+  // keep typed text when re-rendering
+  const lt = document.getElementById("logText"); if (lt) window._logDraft = lt.value;
+  const w = document.getElementById("wish"); if (w) window._wish = w.value;
+  const q = document.getElementById("q"), qv = q ? q.value : null;
+  renderNav();
+  const m = document.getElementById("main");
+  m.innerHTML = tab === "today" ? viewToday() : tab === "plan" ? viewPlan() : tab === "log" ? viewLog() : tab === "coach" ? viewCoach() : viewSettings();
+  const q2 = document.getElementById("q"); if (q2 && qv) q2.value = qv;
+  markMic();
+}
+
+(async () => {
+  S = { ...DEF, ...(await DB.get("settings", {})) };
+  entries = await DB.get("entries", []); plans = await DB.get("plans", {}); chat = await DB.get("chat", []);
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  if (!S.apiKey) tab = "settings";
+  render();
+})();
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { if (viewDate > todayStr()) viewDate = todayStr(); render(); } });
+</script>
+</body>
+</html>
