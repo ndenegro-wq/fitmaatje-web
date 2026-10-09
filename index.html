@@ -33,7 +33,7 @@ html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 -apple-s
 header{position:sticky;top:0;z-index:5;background:var(--green-dark);color:#fff;padding:calc(env(safe-area-inset-top) + 10px) 16px 10px;font-weight:700;font-size:18px}
 :root[data-theme="dark"] header{color:#0d130d}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) header{color:#0d130d}}
-main{padding:16px 16px calc(96px + env(safe-area-inset-bottom));max-width:640px;margin:0 auto}
+main{padding:16px 16px calc(150px + env(safe-area-inset-bottom));max-width:640px;margin:0 auto}
 nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom);z-index:5}
 nav button{flex:1;border:0;background:none;color:var(--muted);padding:8px 0 6px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:2px}
 nav button span{font-size:21px}
@@ -95,12 +95,24 @@ label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
 .datebar h1{flex:1;text-align:center;margin:0}
 .datebar button{border:0;background:none;color:var(--green);font-size:20px;padding:8px 12px}
 .install{background:#FFF8E1;color:#5d4600;border-radius:12px;padding:12px;font-size:14px;margin-bottom:12px}
+#fab{position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:6;border:0;border-radius:28px;padding:14px 18px;font:inherit;font-weight:700;font-size:15px;background:#E65100;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+body.noscroll{overflow:hidden}
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-height:88vh;overflow:auto;background:var(--bg);border-radius:20px 20px 0 0;padding:18px 16px calc(24px + env(safe-area-inset-bottom));max-width:640px;margin:0 auto}
+.sheet input[type=range]{padding:0;border:0;accent-color:var(--green)}
+#toast{position:fixed;left:50%;bottom:calc(140px + env(safe-area-inset-bottom));transform:translateX(-50%);background:#263238;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .25s;z-index:30;pointer-events:none;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+.ms{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.ms span{font-size:12px;border-radius:12px;padding:4px 8px;background:var(--green-light);color:var(--green-dark)}
+.ms span.hit{background:var(--green);color:#fff}
+.ms span.next{outline:2px solid var(--amber)}
 </style>
 </head>
 <body>
 <header>FitMaatje</header>
 <main id="main"></main>
 <nav id="nav"></nav>
+<button id="fab" onclick="openHelp('sweet')" aria-label="Ik heb het moeilijk">🆘 Ik heb het moeilijk</button>
 <input type="file" id="cam" accept="image/*" capture="environment" class="hidden">
 <input type="file" id="gal" accept="image/*" class="hidden">
 
@@ -261,6 +273,8 @@ Plan en afspraken: ${S.protocol}
 Profiel (alleen wat gebruiker invulde): lengte ${S.heightCm || "onbekend"} cm; startgewicht ${S.startWeight || "onbekend"} kg; gewenst einddoel ${S.goalWeight || "onbekend"} kg; startdatum ${S.startDate || "onbekend"}.
 Gezondheid en aandachtspunten: ${S.healthNotes || "nog niet ingevuld"}.
 Werk met haalbare tussendoelen, zonder beloofde einddatum. Verzin geen voortgang. Bij zoete trek: vraag naar tijd, hoeveelheid, honger, gewoonte of stress. Geen schuldgevoel, totaalverbod of compensatie door vasten/sport. Vraag naar actuele beperkingen voordat je oefeningen geeft. Bij pijn op de borst, ernstige benauwdheid of flauwvallen adviseer spoedzorg.
+Het coachteam (AI-rollen die hetzelfde dagboek delen): Ayse (coördinatie), Sara (voeding), Milan (beweging), Emma (motivatie), Noor (voortgang). Verwijs naar een collega als een vraag beter bij die rol past.
+${progressLine()}
 De coachnamen zijn AI-rollen van dezelfde dienst, geen geregistreerde zorgverleners. Dagdoelen zijn door de gebruiker ingestelde waarden; controleer passendheid en adviseer geen strenger doel zonder intake.
 Dagdoel: ${S.kcal} kcal en circa ${S.protein} g eiwit. Eetmomenten: ${moments().map((m, i) => `${i + 1}=${m}`).join(", ")}.
 Voorkeuren / niet eten: ${S.prefs || "geen opgegeven"}.
@@ -272,14 +286,18 @@ function contextText(days = 2) {
   const p = plans[todayStr()];
   if (p) s += `Eetschema vandaag (${p.theme}): ${p.meals.map((m) => `${m.moment}=${m.title} ${mealKcal(m)} kcal`).join("; ")}\n`;
   const w = lastWeight(); if (w) s += `Laatste gewicht: ${w.weight} kg op ${w.date}\n`;
+  const pl = progressLine(); if (pl) s += pl + "\n";
   for (let k = days - 1; k >= 0; k--) {
     const ds = addDays(todayStr(), -k), l = dayEntries(ds); if (!l.length) continue;
     const t = sum(ds);
-    s += `\n${k ? ds : "VANDAAG"}: ${t.kcal} kcal, ${t.protein} g eiwit, sport ${t.sportMin} min, momenten ${[...t.moments].sort().join(",")}\n`;
+    s += `\n${k ? ds : "VANDAAG"}: ${t.kcal} kcal, ${t.protein} g eiwit, sport ${t.sportMin} min, momenten ${[...t.moments].sort().join(",")}, zoete-trek/hulp ${l.filter((e) => e.kind === "craving").length}x, check-ins ${l.filter((e) => e.kind === "checkin").map((e) => e.type === "morning" ? "ochtend" : "avond").join("+") || "geen"}\n`;
     if (k <= 1) l.forEach((e) => {
       s += `  ${e.time} ` + (e.foods || []).map((f) => `${f.name} ${f.amount} (${f.kcal} kcal)`).join("; ")
         + ((e.exercises || []).length ? " sport: " + e.exercises.map((x) => `${x.name} ${x.detail} ${x.minutes} min`).join("; ") : "")
-        + (e.weight ? ` gewicht ${e.weight} kg` : "") + "\n";
+        + (e.weight ? ` gewicht ${e.weight} kg` : "")
+        + (e.kind === "checkin" ? ` [${e.text}]` : "")
+        + (e.kind === "craving" ? ` [hulpknop: ${e.helpType}, sterkte ${e.intensity}/5, uitkomst: ${e.outcome}]` : "")
+        + (e.kind === "note" ? ` [notitie: ${e.reply}]` : "") + "\n";
     });
   }
   return s;
@@ -470,7 +488,8 @@ function go(t) { if (t !== tab) stopDictation(); tab = t; render(); window.scrol
 
 function entryHTML(e) {
   const kc = (e.foods || []).reduce((a, f) => a + f.kcal, 0);
-  const tag = (e.foods || []).length ? (e.moment ? `Moment ${e.moment}` : "Buiten schema") : (e.exercises || []).length ? "Sport" : e.weight ? "Gewicht" : "Notitie";
+  if (e.kind === "craving") return `<div class="card entry"><div class="head"><b>${esc(e.time)}</b><span class="tag">🆘 ${esc((HELP[e.helpType] || HELP.sweet).label)}</span><span class="grow"></span><span class="small muted">sterkte ${e.intensity}/5</span></div><div class="small" style="margin-top:6px">Uitkomst: ${esc(e.outcome)}</div><button class="link red small" onclick="delEntry(${e.id})">Verwijderen</button></div>`;
+  const tag = e.kind === "checkin" ? (e.type === "morning" ? "☀️ Ochtendcheck" : "🌙 Avondcheck") : e.kind === "note" ? "Notitie" : (e.foods || []).length ? (e.moment ? `Moment ${e.moment}` : "Buiten schema") : (e.exercises || []).length ? (e.kind === "walk" ? "🚶 Wandelen" : "Sport") : e.weight ? "Gewicht" : "Notitie";
   return `<div class="card entry">
     <div class="head"><b>${esc(e.time)}</b><span class="tag ${tag === "Buiten schema" ? "off" : ""}">${tag}</span><span class="grow"></span>${kc ? `<b>${kc} kcal</b>` : ""}</div>
     ${e.photo ? `<img class="photo" src="${e.photo}" alt="Foto van eten">` : ""}
@@ -478,7 +497,7 @@ function entryHTML(e) {
     ${(e.exercises || []).map((x) => `<div class="row small"><span class="grow">🏋 ${esc(x.name)} ${esc(x.detail)} — ${x.minutes} min, ~${x.kcal} kcal</span><a class="link" style="color:var(--green-dark);font-weight:600;text-decoration:none" href="${ytUrl(x.name + " techniek uitleg")}" target="_blank" rel="noopener">▶ Voorbeeld</a></div>`).join("")}
     ${e.weight ? `<div>⚖️ ${e.weight} kg</div>` : ""}
     ${e.reply ? `<div class="reply">${esc(e.reply)}</div>` : ""}
-    ${e.text ? `<div class="muted small" style="margin-top:6px">“${esc(e.text)}”</div>` : ""}
+    ${e.text ? `<div class="muted small" style="margin-top:6px">${e.kind === "checkin" || e.kind === "walk" ? esc(e.text) : `“${esc(e.text)}”`}${e.source === "chatgpt" ? " · uit ChatGPT" : ""}</div>` : ""}
     <button class="link red small" onclick="delEntry(${e.id})">Verwijderen</button>
   </div>`;
 }
@@ -492,7 +511,7 @@ function viewToday() {
   return `
   ${!standalone ? `<div class="install">📲 Tip: tik in Safari op <b>Delen</b> → <b>Zet op beginscherm</b>. Dan werkt FitMaatje als een echte app.</div>` : ""}
   ${!S.apiKey ? `<div class="card"><h2>Welkom bij FitMaatje 👋</h2><div class="muted">Stel eerst je naam, doelen en API-sleutel in.</div><br><button class="btn" onclick="go('settings')">Naar instellingen</button></div>` : ""}
-  ${supportCard()}
+  ${updateBanner()}
   <div class="datebar"><button onclick="viewDate=addDays(viewDate,-1);render()">◀</button><h1>${isToday ? "Vandaag" : fmtDate(viewDate)}</h1><button onclick="if(viewDate<todayStr()){viewDate=addDays(viewDate,1);render()}">▶</button></div>
   <div class="card">
     <div class="big">${s.kcal} / ${S.kcal} kcal</div>
@@ -504,10 +523,12 @@ function viewToday() {
       <div class="stat"><span class="small muted">Verbrand</span><b>${s.sportKcal} kcal</b></div>
     </div>
   </div>
+  ${isToday ? checkCard() : ""}
   <div class="card"><h2>Eetmomenten</h2>
     <div class="moments">${moments().map((m, i) => `<div class="${s.moments.has(i + 1) ? "done" : ""} ${nowM === i + 1 ? "now" : ""}">${i + 1}<small>${m}</small></div>`).join("")}</div>
     ${w ? `<div class="muted" style="margin-top:10px">Laatste gewicht: ${w.weight} kg (${w.date})</div>` : ""}
   </div>
+  ${isToday ? progressCard() : ""}
   <div class="row" style="margin-bottom:12px"><button class="btn" style="flex:2" onclick="go('log')">🎤 Inspreken</button><button class="btn" style="flex:1.4" onclick="takePhoto()">📷 Foto</button></div>
   ${list.length ? list.map(entryHTML).join("") : `<div class="muted">Nog niets gelogd.</div>`}`;
 }
@@ -616,7 +637,7 @@ function supportCard() {
   ${help ? `<div role="status" style="margin-top:12px">${esc(help.text)}</div><button class="btn" style="margin-top:12px" onclick="helpToCoach()" ${chatBusy ? "disabled" : ""}>Bespreek dit met Emma</button><div class="muted small" style="margin-top:6px">Deze eerste stap werkt ook zonder verbinding.</div>` : ""}
   <div class="chips"><button onclick="startCheck('morning')">☀️ Ochtendcheck</button><button onclick="startCheck('evening')">🌙 Avondcheck</button></div></div>`;
 }
-function chooseHelp(id) { helpChoice = HELP[id] ? id : ""; render(); }
+function chooseHelp(id) { openHelp(HELP[id] ? id : "sweet"); }
 function selectCoach(id) { if (chatBusy) return; activeCoach = COACHES.some(c=>c.id===id) ? id : "ayse"; go("coach"); }
 function teamCard() {
   return `<div class="card"><h2>Kies je coach</h2><div class="chips">${COACHES.map(c=>`<button onclick="selectCoach('${c.id}')" aria-pressed="${activeCoach===c.id}" ${chatBusy ? "disabled" : ""}><b>${esc(c.name)}</b><br>${esc(c.role)}${activeCoach===c.id ? " · gekozen" : ""}</button>`).join("")}</div><div class="muted small" style="margin-top:10px">Eén gedeeld gesprek, ieder met een eigen aandachtspunt.</div></div>`;
@@ -628,7 +649,9 @@ function draftCoach(id, text) {
   q.scrollIntoView({block:"center",behavior:"smooth"});
 }
 function helpToCoach() { const h = HELP[helpChoice]; if(h) draftCoach("emma", h.question); }
-function startCheck(kind) {
+function startCheck(kind) { return openCheck(kind);
+}
+function startCheckOld(kind) {
   draftCoach("ayse", kind === "morning" ? "Ochtendcheck: help me met mijn eetplan en haalbare acties vandaag. Vraag naar mijn slaap, energie en dagplanning." : "Avondcheck: vraag naar wat ik gegeten heb, beweging, energie en zoete trek. Help me één verbetering voor morgen te kiezen.");
 }
 function progressCard() {
@@ -637,13 +660,15 @@ function progressCard() {
   const pct=valid ? Math.max(0,Math.min(100,(start-current)/(start-goal)*100)) : 0;
   return `<div class="card"><h2>Mijn voortgang</h2><div>${current>0 ? `${current} kg${w ? " · laatst gelogd" : " · startgewicht"}` : "Log je gewicht om je voortgang te volgen."}${goal>0 ? ` · gewenst einddoel ${goal} kg` : ""}</div>
   ${valid ? `<div class="bar" role="progressbar" aria-label="Voortgang naar gewenst einddoel" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"><div style="width:${pct}%"></div></div>` : ""}
-  <div class="muted small">Bekijk de trend over meerdere weken. Een losse meting is geen oordeel.</div><div class="chips"><button onclick="draftCoach('noor','Bespreek mijn voortgang op basis van mijn gelogde gegevens. Benoem wat nog ontbreekt.')">Vraag Noor</button><button onclick="go('settings')">Mijn profiel</button></div>
-  <button class="btn out" style="margin-top:12px" onclick="copyOverview()">Overzicht kopiëren voor ChatGPT</button><div role="status" class="muted small" style="margin-top:8px">${esc(copyStatus)}</div>
+  ${(() => { const f = progressFacts(); if (!f.ms.length) return ""; return `<div class="ms">${f.ms.map((m) => `<span class="${f.cur <= m ? "hit" : m === f.next ? "next" : ""}">${f.cur <= m ? "✓ " : ""}${m} kg</span>`).join("")}</div>
+  <div class="small" style="margin-top:8px">${f.lost > 0 ? `<b>${f.lost} kg</b> eraf sinds de start. ` : ""}${f.next ? `Volgend tussendoel: <b>${f.next} kg</b> (nog ${Math.round((f.cur - f.next) * 10) / 10} kg).` : ""}${f.trend != null ? ` Weektrend: ${f.trend > 0 ? "+" : ""}${f.trend} kg.` : ""}</div>`; })()}
+  <div class="muted small">Bekijk de trend over meerdere weken. Een losse meting is geen oordeel. Gezond tempo: ongeveer 0,5–1 kg per week.</div><div class="chips"><button onclick="draftCoach('noor','Bespreek mijn voortgang op basis van mijn gelogde gegevens. Benoem wat nog ontbreekt.')">Vraag Noor</button><button onclick="go('settings')">Mijn profiel</button></div>
+  <button class="btn out" style="margin-top:12px" onclick="shareOverview()">Deel overzicht met ChatGPT</button><div role="status" class="muted small" style="margin-top:8px">${esc(copyStatus)}</div>
   <textarea id="shareOverview" class="hidden" readonly aria-label="Overzicht om handmatig te kopiëren"></textarea>
   <div class="muted small" style="margin-top:6px">Plak dit zelf in je gesprek met Ayse. Je API-sleutel wordt niet meegenomen.</div></div>`;
 }
 function overviewText() {
-  return `FitMaatje-overzicht voor mijn dieetbegeleiding\nNaam: ${S.name || "niet ingevuld"}\nLengte: ${S.heightCm || "niet ingevuld"} cm\nStartgewicht: ${S.startWeight || "niet ingevuld"} kg\nGewenst einddoel: ${S.goalWeight || "niet ingevuld"} kg\nStartdatum: ${S.startDate || "niet ingevuld"}\nVoorkeuren: ${S.prefs || "niet ingevuld"}\nAandachtspunten: ${S.healthNotes || "niet ingevuld"}\n\n${contextText(7)}\nBegeleid me met één haalbare volgende stap. De gelogde calorieën zijn schattingen; ontbrekende logs betekenen niet dat ik niets gegeten heb.`;
+  return `FitMaatje-overzicht voor mijn dieetbegeleiding\nNaam: ${S.name || "niet ingevuld"}\nLengte: ${S.heightCm || "niet ingevuld"} cm\nStartgewicht: ${S.startWeight || "niet ingevuld"} kg\nGewenst einddoel: ${S.goalWeight || "niet ingevuld"} kg\nStartdatum: ${S.startDate || "niet ingevuld"}\nVoorkeuren: ${S.prefs || "niet ingevuld"}\nAandachtspunten: ${S.healthNotes || "niet ingevuld"}\n\n${contextText(7)}\nVolgend tussendoel: ${progressFacts().next || "-"} kg.\nBegeleid me met één haalbare volgende stap. De gelogde calorieën zijn schattingen; ontbrekende logs betekenen niet dat ik niets gegeten heb.`;
 }
 async function copyOverview() {
   const text=overviewText();
@@ -691,7 +716,11 @@ function viewSettings() {
   <button class="btn" onclick="saveSettings()">Opslaan</button>
   <div id="saved" class="muted" style="margin-top:8px"></div>
   <div class="card" style="margin-top:16px"><h2>Gegevens</h2><div class="muted small">Je dagboek en instellingen worden lokaal in deze browser bewaard. Wis je browsergegevens, dan kunnen ze verloren gaan. Voor AI-advies worden relevante gegevens naar Anthropic gestuurd. Maak regelmatig een back-up.</div><br>
-  <button class="btn out" onclick="exportData()">Back-up downloaden</button></div>`;
+  <button class="btn out" onclick="exportData()">Back-up downloaden</button></div>
+  ${importCard()}${chatgptCard()}
+  <div class="card"><h2>Herinneringen</h2><div class="muted small">Een website mag op je telefoon geen meldingen plannen zonder eigen server. Zet daarom twee dagelijkse agenda-herinneringen (08:00 en 21:00) met een link naar FitMaatje.</div><br>
+  <button class="btn out" onclick="calendarFile()">📅 Ochtend- en avondherinnering in agenda zetten</button></div>
+  <div class="muted small" style="text-align:center;margin:8px 0 24px">FitMaatje versie ${APP_VERSION} · <button class="link small" onclick="checkUpdate().then(()=>toast(updateReady?'Nieuwe versie gevonden':'Je hebt de nieuwste versie'))">Controleer op update</button></div>`;
 }
 async function saveSettings() {
   const v = (id) => document.getElementById(id).value;
@@ -708,6 +737,298 @@ async function saveSettings() {
 function exportData() {
   const blob = new Blob([JSON.stringify({ settings: { ...S, apiKey: "" }, entries, plans, chat }, null, 1)], { type: "application/json" });
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "fitmaatje-backup-" + todayStr() + ".json"; a.click();
+}
+
+
+// ======================================================= versie & updates
+const APP_VERSION = "2026-10-09.2";
+let updateReady = false;
+async function checkUpdate() {
+  try {
+    const r = await fetch("version.json?t=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) return;
+    const v = (await r.json()).version;
+    if (v && v !== APP_VERSION && !updateReady) { updateReady = true; render(); }
+  } catch (e) {}
+}
+function updateBanner() {
+  return updateReady ? `<div class="install" style="background:var(--green-light);color:var(--green-dark)">🔄 Er is een nieuwe versie van FitMaatje. <button class="link" onclick="location.reload()">Nu laden</button> (je gegevens blijven bewaard)</div>` : "";
+}
+
+// ======================================================= hulp-sheet (overal bereikbaar)
+let sheet = null; // {kind:'help'|'check', ...}
+let urgeEnd = 0, urgeTimer = null;
+function openHelp(choice = "sweet") { helpChoice = choice; sheet = { kind: "help" }; renderSheet(); }
+function closeSheet() { sheet = null; clearInterval(urgeTimer); urgeTimer = null; renderSheet(); render(); }
+function cravingsOn(ds) { return dayEntries(ds).filter((e) => e.kind === "craving"); }
+async function logCraving(outcome) {
+  const now = new Date();
+  const intensity = +(document.getElementById("urgeLevel") || { value: 3 }).value || 3;
+  entries.push({ id: Date.now(), ts: Date.now(), date: todayStr(now), time: hm(now), kind: "craving", helpType: helpChoice || "sweet",
+    intensity, outcome, foods: [], exercises: [], weight: null, moment: null, text: "", reply: "" });
+  await save();
+}
+function startUrge() {
+  urgeEnd = Date.now() + 10 * 60 * 1000;
+  clearInterval(urgeTimer);
+  urgeTimer = setInterval(() => {
+    const el = document.getElementById("urgeClock"); if (!el) return;
+    const left = Math.max(0, urgeEnd - Date.now()), m = Math.floor(left / 60000), s = Math.floor((left % 60000) / 1000);
+    el.textContent = left ? `${m}:${String(s).padStart(2, "0")}` : "Klaar! Hoe is de trek nu?";
+    if (!left) { clearInterval(urgeTimer); urgeTimer = null; }
+  }, 500);
+  renderSheet();
+}
+const SWEET_SWAPS = [
+  "Magere kwark of skyr met kaneel en een paar bessen",
+  "Een appel of peer in partjes, of 2 mandarijnen",
+  "Thee met kaneel of zoethoutthee, of koffie",
+  "2 vierkantjes pure chocolade (70%+) op een bordje, rustig opeten",
+  "Bevroren druiven of banaanplakjes",
+];
+function helpSheetHTML() {
+  const h = HELP[helpChoice] || HELP.sweet, todayC = cravingsOn(todayStr()).length;
+  const timerOn = urgeTimer || (urgeEnd > Date.now());
+  return `<div class="row"><h2 class="grow">Ik heb het moeilijk</h2><button class="link" onclick="closeSheet()">Sluiten</button></div>
+  <div class="chips">${Object.entries(HELP).map(([id, x]) => `<button onclick="helpChoice='${id}';renderSheet()" aria-pressed="${helpChoice === id}" style="${helpChoice === id ? "border-color:var(--green);background:var(--green-light)" : ""}">${esc(x.label)}</button>`).join("")}</div>
+  <div style="margin-top:12px">${esc(h.text)}</div>
+  ${helpChoice === "sweet" || !helpChoice ? `
+    <label for="urgeLevel">Hoe sterk is de trek? (1 = licht, 5 = heel sterk)</label>
+    <input id="urgeLevel" type="range" min="1" max="5" value="3">
+    <div class="card" style="margin:12px 0;background:var(--green-light)">
+      <b>Stap 1 · Golf uitzitten (10 min)</b><div class="small">Trek piekt meestal en zakt dan weer. Drink een groot glas water, loop even naar buiten of poets je tanden. Daarna kies je bewust.</div>
+      ${timerOn ? `<div id="urgeClock" class="big" style="text-align:center;margin-top:8px">10:00</div>` : `<button class="btn" style="margin-top:10px" onclick="startUrge()">▶ Start 10 minuten</button>`}
+    </div>
+    <div class="card" style="margin:0 0 12px;background:var(--green-light)"><b>Stap 2 · Als je toch iets wilt</b><ul class="small" style="margin:6px 0 0;padding-left:18px">${SWEET_SWAPS.map((s) => `<li>${esc(s)}</li>`).join("")}</ul></div>
+    <div class="row"><button class="btn" onclick="logCraving('gezakt').then(()=>{toast('Goed gedaan 💪 genoteerd');closeSheet()})">✓ Trek is gezakt</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn out" onclick="logCraving('bewust gegeten').then(()=>{closeSheet();go('log')})">Ik neem bewust iets — loggen</button></div>`
+  : `<div class="row" style="margin-top:12px"><button class="btn" onclick="logCraving('${esc(h.label)}').then(()=>{toast('Genoteerd. Volgende maaltijd gewoon verder.');closeSheet()})">Oké, ik ga verder</button></div>`}
+  <button class="btn out" style="margin-top:8px" onclick="logCraving('besproken').then(()=>{closeSheet();helpToCoach()})">💬 Bespreek dit met Emma</button>
+  <div class="muted small" style="margin-top:10px">Werkt ook zonder internet. Vandaag ${todayC}× hulp gevraagd — Emma en Noor zien dit patroon in je dagboek, zonder oordeel.</div>`;
+}
+
+// ======================================================= ochtend- en avondcheck (in het gedeelde dagboek)
+function checkinOn(ds, type) { return dayEntries(ds).find((e) => e.kind === "checkin" && e.type === type); }
+function openCheck(type) { sheet = { kind: "check", type }; renderSheet(); }
+const scale = (id, label, lo, hi) => `<label for="${id}">${label}</label><div class="row small"><span>${lo}</span><input id="${id}" type="range" min="1" max="5" value="3" class="grow"><span>${hi}</span></div>`;
+function checkSheetHTML() {
+  const morning = sheet.type === "morning";
+  return `<div class="row"><h2 class="grow">${morning ? "☀️ Ochtendcheck" : "🌙 Avondcheck"}</h2><button class="link" onclick="closeSheet()">Sluiten</button></div>
+  <div class="muted small">Duurt 1 minuut. Je antwoorden komen in je dagboek, zodat het hele coachteam ermee verder kan.</div>
+  ${morning ? `
+    ${scale("c_sleep", "Hoe heb je geslapen?", "slecht", "goed")}
+    ${scale("c_energy", "Energie nu", "laag", "hoog")}
+    ${scale("c_sweet", "Trek in zoet nu", "geen", "veel")}
+    <label for="c_weight">Gewicht vandaag (optioneel, kg)</label><input id="c_weight" type="text" inputmode="decimal" placeholder="bijv. 97.6">
+    <label for="c_plan">Wat staat er vandaag op de planning? (werk, afspraken, wanneer kun je wandelen?)</label>
+    <div class="composer"><textarea id="c_plan" style="min-height:70px"></textarea>${SR ? `<button class="round" data-mic="c_plan" onclick="recActive&&recTarget==='c_plan'?stopDictation():startDictation('c_plan')">🎤</button>` : ""}</div>`
+  : `
+    ${scale("c_food", "Hoe ging het eten vandaag?", "lastig", "goed")}
+    ${scale("c_energy", "Energie vandaag", "laag", "hoog")}
+    <label for="c_walk">Gewandeld vandaag (minuten)</label><input id="c_walk" type="number" inputmode="numeric" placeholder="0">
+    <label for="c_good">Wat ging goed?</label>
+    <div class="composer"><textarea id="c_good" style="min-height:60px"></textarea>${SR ? `<button class="round" data-mic="c_good" onclick="recActive&&recTarget==='c_good'?stopDictation():startDictation('c_good')">🎤</button>` : ""}</div>
+    <label for="c_tomorrow">Wat wil je morgen anders of hetzelfde doen?</label>
+    <div class="composer"><textarea id="c_tomorrow" style="min-height:60px"></textarea>${SR ? `<button class="round" data-mic="c_tomorrow" onclick="recActive&&recTarget==='c_tomorrow'?stopDictation():startDictation('c_tomorrow')">🎤</button>` : ""}</div>`}
+  <button class="btn" style="margin-top:14px" onclick="saveCheck(true)">Opslaan & bespreken met ${morning ? "Ayse" : "Emma"}</button>
+  <button class="btn out" style="margin-top:8px" onclick="saveCheck(false)">Alleen opslaan</button>`;
+}
+async function saveCheck(discuss) {
+  stopDictation();
+  const v = (id) => { const el = document.getElementById(id); return el ? el.value : ""; };
+  const now = new Date(), morning = sheet.type === "morning";
+  const e = { id: Date.now(), ts: Date.now(), date: todayStr(now), time: hm(now), kind: "checkin", type: sheet.type,
+    foods: [], exercises: [], weight: null, moment: null, text: "", reply: "" };
+  if (morning) {
+    Object.assign(e, { sleep: +v("c_sleep"), energy: +v("c_energy"), sweet: +v("c_sweet"), plan: v("c_plan").trim() });
+    const w = parseFloat(String(v("c_weight")).replace(",", "."));
+    if (w > 30 && w < 400) e.weight = Math.round(w * 10) / 10;
+    e.text = `Ochtendcheck: slaap ${e.sleep}/5, energie ${e.energy}/5, zoete trek ${e.sweet}/5${e.weight ? `, gewicht ${e.weight} kg` : ""}. Planning: ${e.plan || "-"}`;
+  } else {
+    const walk = Math.max(0, parseInt(v("c_walk")) || 0);
+    Object.assign(e, { food: +v("c_food"), energy: +v("c_energy"), walk, good: v("c_good").trim(), tomorrow: v("c_tomorrow").trim() });
+    const already = dayEntries(todayStr()).some((x) => x.kind === "walk");
+    if (walk && !already) e.exercises = [walkExercise(walk)];
+    e.text = `Avondcheck: eten ${e.food}/5, energie ${e.energy}/5, ${walk} min gewandeld, zoete-trekmomenten vandaag ${cravingsOn(todayStr()).length}. Goed: ${e.good || "-"}. Morgen: ${e.tomorrow || "-"}`;
+  }
+  entries.push(e); entries.sort((a, b) => a.ts - b.ts); await save();
+  closeSheet();
+  if (discuss) {
+    if (!S.apiKey) { toast("Opgeslagen. Voor een reactie van de coach: stel je API-sleutel in."); return; }
+    activeCoach = morning ? "ayse" : "emma"; go("coach");
+    ask(morning ? `${e.text}\nMaak samen met mij een haalbaar dagplan: eten, wanneer wandelen, en een plan voor als de zoete trek komt.`
+      : `${e.text}\nReflecteer kort en help me één concrete stap voor morgen te kiezen.`);
+  } else toast("Opgeslagen ✓");
+}
+function checkCard() {
+  const h = new Date().getHours(), m = checkinOn(todayStr(), "morning"), ev = checkinOn(todayStr(), "evening");
+  const showM = !m && h < 14, showE = !ev && h >= 17;
+  return `<div class="card"><div class="row"><h2 class="grow" style="margin:0">Dagritme</h2><span class="small muted">${m ? "☀️ ✓" : "☀️ –"} ${ev ? "🌙 ✓" : "🌙 –"}</span></div>
+    ${showM ? `<div class="muted small" style="margin:6px 0 10px">Begin de dag met een korte check. Ayse maakt er je dagplan van.</div><button class="btn" onclick="openCheck('morning')">☀️ Ochtendcheck doen</button>` : ""}
+    ${showE ? `<div class="muted small" style="margin:6px 0 10px">Sluit de dag af. Emma helpt je met één stap voor morgen.</div><button class="btn" onclick="openCheck('evening')">🌙 Avondcheck doen</button>` : ""}
+    ${!showM && !showE ? `<div class="chips"><button onclick="openCheck('morning')">☀️ Ochtendcheck${m ? " (opnieuw)" : ""}</button><button onclick="openCheck('evening')">🌙 Avondcheck${ev ? " (opnieuw)" : ""}</button></div>` : ""}
+    <div class="row" style="margin-top:10px"><button class="btn out" style="padding:10px" onclick="quickWalk()">🚶 Wandeling loggen</button></div>
+  </div>`;
+}
+function walkExercise(min) {
+  const kg = Number((lastWeight() || {}).weight || S.startWeight || 80);
+  return { name: "Wandelen", detail: "", minutes: min, kcal: Math.round(3.5 * kg * min / 60) };
+}
+async function quickWalk() {
+  const v = prompt("Hoeveel minuten heb je gewandeld?", "30"); const min = parseInt(v); if (!(min > 0)) return;
+  const now = new Date();
+  entries.push({ id: Date.now(), ts: Date.now(), date: todayStr(now), time: hm(now), kind: "walk", text: `${min} min gewandeld`, foods: [], exercises: [walkExercise(min)], weight: null, moment: null, reply: "" });
+  await save(); render(); toast(`🚶 ${min} minuten genoteerd`);
+}
+function calendarFile() {
+  const url = location.href.split("#")[0].split("?")[0];
+  const ev = (uid, h, m, title, desc) => `BEGIN:VEVENT\r\nUID:${uid}@fitmaatje\r\nDTSTAMP:20261009T000000Z\r\nDTSTART;TZID=Europe/Amsterdam:20261013T${h}${m}00\r\nDURATION:PT10M\r\nRRULE:FREQ=DAILY\r\nSUMMARY:${title}\r\nDESCRIPTION:${desc} ${url}\r\nURL:${url}\r\nBEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:${title}\r\nTRIGGER:PT0M\r\nEND:VALARM\r\nEND:VEVENT\r\n`;
+  const ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//FitMaatje//NL\r\n" +
+    ev("ochtend", "08", "00", "☀️ FitMaatje ochtendcheck", "Open FitMaatje voor je ochtendcheck:") +
+    ev("avond", "21", "00", "🌙 FitMaatje avondcheck", "Open FitMaatje voor je avondcheck:") + "END:VCALENDAR\r\n";
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar" })); a.download = "fitmaatje-herinneringen.ics"; a.click();
+}
+
+// ======================================================= voortgang & tussendoelen
+function milestones() {
+  const start = Number(S.startWeight), goal = Number(S.goalWeight);
+  if (!(start > 0 && goal > 0 && start > goal)) return [];
+  const list = [Math.round(start * 0.95 * 10) / 10, Math.round(start * 0.9 * 10) / 10];
+  for (let k = Math.floor(list[1] / 5) * 5; k > goal; k -= 5) if (k < list[1] - 1) list.push(k);
+  list.push(goal);
+  return [...new Set(list.filter((x) => x >= goal && x < start))].sort((a, b) => b - a);
+}
+function weightSeries() { return entries.filter((e) => e.weight).map((e) => ({ date: e.date, w: Number(e.weight) })); }
+function avgWeight(days, endOffset = 0) {
+  const to = addDays(todayStr(), -endOffset), from = addDays(to, -(days - 1));
+  const l = weightSeries().filter((x) => x.date >= from && x.date <= to);
+  return l.length ? l.reduce((a, x) => a + x.w, 0) / l.length : null;
+}
+function progressFacts() {
+  const start = Number(S.startWeight), goal = Number(S.goalWeight), w = lastWeight(), cur = w ? Number(w.weight) : start;
+  const ms = milestones(), next = ms.find((x) => x < cur - 0.05);
+  const a7 = avgWeight(7), p7 = avgWeight(7, 7);
+  const weeks = S.startDate ? Math.max(0, Math.floor((new Date(todayStr()) - new Date(S.startDate)) / 6048e5)) : null;
+  return { start, goal, cur, next, lost: start && cur ? Math.round((start - cur) * 10) / 10 : null, trend: a7 && p7 ? Math.round((a7 - p7) * 10) / 10 : null, weeks, ms };
+}
+function progressLine() {
+  const f = progressFacts(); if (!f.start) return "";
+  return `Voortgang: start ${f.start} kg${S.startDate ? ` op ${S.startDate}` : ""}, nu ${f.cur} kg (${f.lost >= 0 ? "-" : "+"}${Math.abs(f.lost)} kg), gewenst einddoel ${f.goal || "?"} kg. Tussendoelen: ${f.ms.join(" → ")} kg. Volgend tussendoel: ${f.next || "-"} kg.${f.trend != null ? ` 7-daags gemiddelde t.o.v. week ervoor: ${f.trend > 0 ? "+" : ""}${f.trend} kg.` : ""}`;
+}
+
+// ======================================================= delen met ChatGPT & importeren
+const IMPORT_TAG = "FITMAATJE-IMPORT";
+function chatgptInstruction() {
+  return `Je begeleidt mij samen met mijn app FitMaatje. Ik plak soms een "FitMaatje-overzicht"; gebruik dat als actuele stand (de calorieën zijn schattingen).
+Als we in dit gesprek iets vastleggen wat in mijn app hoort (maaltijd, gewicht, wandeling, check-in of afspraak), zet dan helemaal onderaan je antwoord één codeblok dat begint met de regel ${IMPORT_TAG} gevolgd door JSON in dit formaat:
+${IMPORT_TAG}
+{"items":[
+ {"type":"meal","date":"JJJJ-MM-DD","time":"UU:MM","text":"wat ik at","kcal":0,"protein_g":0},
+ {"type":"weight","date":"JJJJ-MM-DD","kg":0},
+ {"type":"walk","date":"JJJJ-MM-DD","minutes":0},
+ {"type":"note","date":"JJJJ-MM-DD","text":"afspraak of inzicht van de coach"}
+]}
+Neem alleen items op die ik echt heb genoemd. Verzin geen gegevens. Ik kopieer dat blok en plak het in FitMaatje bij "Importeren".`;
+}
+async function shareOverview() {
+  const text = overviewText();
+  if (navigator.share) { try { await navigator.share({ title: "FitMaatje-overzicht", text }); return; } catch (e) { if (e && e.name === "AbortError") return; } }
+  copyOverview();
+}
+async function copyText(t, okMsg) {
+  try { await navigator.clipboard.writeText(t); toast(okMsg); }
+  catch (e) { prompt("Kopieer deze tekst:", t); }
+}
+function parseImport(raw) {
+  raw = String(raw || "").trim();
+  const tagAt = raw.indexOf(IMPORT_TAG);
+  let txt = tagAt >= 0 ? raw.slice(tagAt + IMPORT_TAG.length) : raw;
+  const s = txt.indexOf("{"), e = txt.lastIndexOf("}");
+  if (s < 0 || e <= s) throw new Error("Geen gegevens gevonden. Plak het hele blok, inclusief { en }.");
+  const o = JSON.parse(txt.slice(s, e + 1));
+  if (o.fitmaatjeProfile) return { kind: "profile", data: o.fitmaatjeProfile };
+  if (Array.isArray(o.entries) || o.settings) return { kind: "backup", data: o };
+  if (Array.isArray(o.items)) return { kind: "items", data: o.items };
+  throw new Error("Onbekend formaat.");
+}
+const PROFILE_KEYS = ["name", "heightCm", "startWeight", "goalWeight", "startDate", "healthNotes", "kcal", "protein", "moments", "protocol", "prefs"];
+function describeImport(p) {
+  if (p.kind === "profile") return "Profiel: " + PROFILE_KEYS.filter((k) => p.data[k] != null && p.data[k] !== "").map((k) => k).join(", ");
+  if (p.kind === "backup") return `Back-up: ${(p.data.entries || []).length} dagboekregels, ${Object.keys(p.data.plans || {}).length} schema's${p.data.settings ? ", instellingen" : ""}`;
+  return `${p.data.length} item(s) uit ChatGPT: ` + p.data.map((i) => i.type).join(", ");
+}
+function itemToEntry(i, n) {
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(i.date || "") ? i.date : todayStr();
+  const time = /^\d{1,2}:\d{2}$/.test(i.time || "") ? i.time.padStart(5, "0") : "12:00";
+  const ts = new Date(date + "T" + time + ":00").getTime() || Date.now();
+  const base = { id: Date.now() + n, ts, date, time, foods: [], exercises: [], weight: null, moment: null, reply: "", source: "chatgpt", text: String(i.text || "") };
+  if (i.type === "meal") return { ...base, foods: [{ name: String(i.text || "Maaltijd"), amount: String(i.amount || ""), kcal: Math.round(+i.kcal || 0), protein: Math.round(+i.protein_g || 0) }], moment: momentAt(time) };
+  if (i.type === "weight" && +i.kg > 30) return { ...base, weight: Math.round(+i.kg * 10) / 10, text: base.text || "Gewicht (uit ChatGPT)" };
+  if (i.type === "walk" && +i.minutes > 0) return { ...base, kind: "walk", exercises: [walkExercise(+i.minutes)], text: base.text || `${i.minutes} min gewandeld` };
+  if (i.type === "note" || i.type === "checkin") return { ...base, kind: "note", reply: String(i.text || "") , text: "Notitie uit ChatGPT" };
+  return null;
+}
+async function applyImport(p) {
+  if (p.kind === "profile") {
+    PROFILE_KEYS.forEach((k) => { if (p.data[k] != null && p.data[k] !== "") S[k] = typeof DEF[k] === "number" ? Number(p.data[k]) : String(p.data[k]); });
+  } else if (p.kind === "backup") {
+    const ids = new Set(entries.map((e) => e.id));
+    (p.data.entries || []).forEach((e) => { if (e && e.id && !ids.has(e.id)) entries.push(e); });
+    Object.entries(p.data.plans || {}).forEach(([d, pl]) => { if (!plans[d]) plans[d] = pl; });
+    if (p.data.settings) PROFILE_KEYS.forEach((k) => { if ((S[k] === "" || S[k] == null) && p.data.settings[k]) S[k] = p.data.settings[k]; });
+  } else {
+    p.data.map(itemToEntry).filter(Boolean).forEach((e) => entries.push(e));
+  }
+  entries.sort((a, b) => a.ts - b.ts);
+  await save();
+}
+let importPreview = null;
+function previewImport() {
+  const el = document.getElementById("importBox");
+  try { importPreview = parseImport(el.value); document.getElementById("importMsg").innerHTML = `<b>${esc(describeImport(importPreview))}</b><br><button class="btn" style="margin-top:8px" onclick="confirmImport()">Toevoegen</button>`; }
+  catch (e) { importPreview = null; document.getElementById("importMsg").textContent = "⚠️ " + e.message; }
+}
+async function confirmImport() {
+  if (!importPreview) return;
+  await applyImport(importPreview); importPreview = null; toast("Geïmporteerd ✓ — bestaande gegevens zijn bewaard"); render();
+}
+async function importFile(ev) {
+  const f = ev.target.files && ev.target.files[0]; ev.target.value = ""; if (!f) return;
+  const t = await f.text(); const box = document.getElementById("importBox"); box.value = t; previewImport();
+}
+function importCard() {
+  return `<div class="card"><h2>Importeren</h2>
+  <div class="muted small">Plak hier een blok uit ChatGPT (${IMPORT_TAG}), je profielbestand of een back-up. Bestaande gegevens worden nooit overschreven; er wordt alleen toegevoegd.</div>
+  <textarea id="importBox" style="margin-top:8px;min-height:90px" placeholder="Plak hier…" oninput="previewImport()"></textarea>
+  <div class="row" style="margin-top:8px"><button class="btn out" style="padding:10px" onclick="document.getElementById('importFile').click()">📄 Bestand kiezen</button></div>
+  <input type="file" id="importFile" accept=".json,application/json,text/plain" class="hidden" onchange="importFile(event)">
+  <div id="importMsg" class="small" style="margin-top:8px"></div></div>`;
+}
+function chatgptCard() {
+  return `<div class="card"><h2>Samenwerken met ChatGPT</h2>
+  <div class="muted small">ChatGPT kan je FitMaatje-gegevens niet zelf lezen of aanpassen. Zo wissel je ze in een paar tikken uit:</div>
+  <ol class="small" style="padding-left:18px;margin:8px 0">
+    <li><b>Eenmalig:</b> kopieer de instructie en plak die in je ChatGPT-project (Projectinstructies) of bovenaan je gesprek.</li>
+    <li><b>FitMaatje → ChatGPT:</b> tik op <i>Deel overzicht</i> en kies de ChatGPT-app.</li>
+    <li><b>ChatGPT → FitMaatje:</b> kopieer het ${IMPORT_TAG}-blok onder ChatGPT's antwoord en plak het hierboven bij Importeren.</li>
+  </ol>
+  <button class="btn out" style="padding:10px" onclick="copyText(chatgptInstruction(),'Instructie gekopieerd ✓')">1 · Instructie voor ChatGPT kopiëren</button>
+  <button class="btn" style="padding:10px;margin-top:8px" onclick="shareOverview()">2 · Deel overzicht met ChatGPT</button></div>`;
+}
+
+// ======================================================= kleine helpers
+function toast(msg) {
+  let t = document.getElementById("toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; document.body.appendChild(t); }
+  t.textContent = msg; t.className = "show"; clearTimeout(t._h); t._h = setTimeout(() => { t.className = ""; }, 2600);
+}
+function renderSheet() {
+  let wrap = document.getElementById("sheetWrap");
+  if (!wrap) { wrap = document.createElement("div"); wrap.id = "sheetWrap"; document.body.appendChild(wrap); }
+  if (!sheet) { wrap.innerHTML = ""; document.body.classList.remove("noscroll"); return; }
+  document.body.classList.add("noscroll");
+  wrap.innerHTML = `<div class="backdrop" onclick="closeSheet()"></div><div class="sheet" role="dialog" aria-modal="true">${sheet.kind === "help" ? helpSheetHTML() : checkSheetHTML()}</div>`;
+  markMic();
 }
 
 function render() {
@@ -727,9 +1048,9 @@ function render() {
   entries = await DB.get("entries", []); plans = await DB.get("plans", {}); chat = await DB.get("chat", []);
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   // Het coachteam en directe hulp zijn ook zonder API-sleutel bereikbaar.
-  render();
+  render(); checkUpdate();
 })();
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { if (viewDate > todayStr()) viewDate = todayStr(); render(); } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { if (viewDate > todayStr()) viewDate = todayStr(); if (!sheet) render(); checkUpdate(); } });
 </script>
 </body>
 </html>
