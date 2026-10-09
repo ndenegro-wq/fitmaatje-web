@@ -153,9 +153,10 @@ const DEF = {
   name: "", apiKey: "", model: "claude-sonnet-5-5", kcal: 1500, protein: 110,
   moments: "07:30,10:00,12:30,15:30,18:00,20:30",
   protocol: "Gezond en duurzaam afvallen, gevarieerd eten, voldoende eiwit en groente.",
-  prefs: "",
+  prefs: "", heightCm: "", startWeight: "", goalWeight: "", startDate: "", healthNotes: "",
 };
 let S = { ...DEF }, entries = [], plans = {}, chat = [];
+let activeCoach = "ayse", helpChoice = "", copyStatus = "";
 let tab = "today", viewDate = todayStr(), planDate = null;
 let planBusy = null, planErr = null;
 
@@ -257,6 +258,10 @@ async function callJson(system, user, maxTokens, imgB64) {
 function coachSystem() {
   return `Je bent FitMaatje, de persoonlijke voedings- en sportcoach van ${S.name || "de gebruiker"}. Je spreekt Nederlands: direct, warm, kort en concreet.
 Plan en afspraken: ${S.protocol}
+Profiel (alleen wat gebruiker invulde): lengte ${S.heightCm || "onbekend"} cm; startgewicht ${S.startWeight || "onbekend"} kg; gewenst einddoel ${S.goalWeight || "onbekend"} kg; startdatum ${S.startDate || "onbekend"}.
+Gezondheid en aandachtspunten: ${S.healthNotes || "nog niet ingevuld"}.
+Werk met haalbare tussendoelen, zonder beloofde einddatum. Verzin geen voortgang. Bij zoete trek: vraag naar tijd, hoeveelheid, honger, gewoonte of stress. Geen schuldgevoel, totaalverbod of compensatie door vasten/sport. Vraag naar actuele beperkingen voordat je oefeningen geeft. Bij pijn op de borst, ernstige benauwdheid of flauwvallen adviseer spoedzorg.
+De coachnamen zijn AI-rollen van dezelfde dienst, geen geregistreerde zorgverleners. Dagdoelen zijn door de gebruiker ingestelde waarden; controleer passendheid en adviseer geen strenger doel zonder intake.
 Dagdoel: ${S.kcal} kcal en circa ${S.protein} g eiwit. Eetmomenten: ${moments().map((m, i) => `${i + 1}=${m}`).join(", ")}.
 Voorkeuren / niet eten: ${S.prefs || "geen opgegeven"}.
 Je bent een coach, geen arts: bij klachten, zwangerschap, duizeligheid of pijn verwijs je naar huisarts of diëtist. Moedig nooit extreem weinig eten of overtraining aan.`;
@@ -390,21 +395,24 @@ function splitVideos(t) {
 const ytUrl = (q) => "https://www.youtube.com/results?search_query=" + encodeURIComponent(q);
 let chatBusy = false;
 async function ask(q) {
-  chat.push({ me: true, t: q }); chatBusy = true; render(); scrollEnd();
+  if (chatBusy) return;
+  const selectedCoach = COACHES.find(c => c.id === activeCoach) || COACHES[0];
+  const system = coachSystem() + "\nJe neemt nu de AI-coachrol " + selectedCoach.name + " aan. Taak: " + selectedCoach.task;
+  chat.push({ me: true, t: q, coach: selectedCoach.name }); chatBusy = true; render(); scrollEnd();
   const msgs = []; let expectUser = true;
   chat.slice(-11, -1).forEach((m) => { if (m.me === expectUser) { msgs.push({ role: m.me ? "user" : "assistant", content: m.t }); expectUser = !expectUser; } });
   if (!expectUser) msgs.push({ role: "assistant", content: "Oké." });
   msgs.push({ role: "user", content: `Actuele gegevens:\n${contextText(7)}\n\nVraag: ${q}` });
   let a;
   try {
-    a = await callClaude(coachSystem() + `
+    a = await callClaude(system + `
 
 Antwoord kort (max ~120 woorden) tenzij om een schema of uitleg wordt gevraagd. Geen markdown-koppen of sterretjes.
 Noem je concrete oefeningen, zet dan helemaal onderaan per oefening één regel in exact dit formaat:
 [[oefening: <Nederlandse naam> | <Engelse zoekterm voor een techniekvideo, bijv. "squat proper form">]]
 De app maakt daar videoknoppen van.`, msgs, 6000);
   } catch (e) { a = e.message; }
-  chat.push({ me: false, t: a || "Ik kreeg geen antwoord terug. Probeer het nog eens." });
+  chat.push({ me: false, t: a || "Ik kreeg geen antwoord terug. Probeer het nog eens.", coach: selectedCoach.name });
   chatBusy = false; await save(); render(); scrollEnd();
 }
 const scrollEnd = () => setTimeout(() => window.scrollTo(0, document.body.scrollHeight), 50);
@@ -453,7 +461,7 @@ async function readPhoto(file) {
 }
 
 // ======================================================= views
-const TABS = [["today", "🏠", "Vandaag"], ["plan", "🍽", "Schema"], ["log", "🎤", "Inspreken"], ["coach", "💬", "Coach"], ["settings", "⚙️", "Instellingen"]];
+const TABS = [["today", "🏠", "Vandaag"], ["plan", "🍽", "Schema"], ["log", "🎤", "Inspreken"], ["coach", "💬", "Mijn team"], ["settings", "⚙️", "Instellingen"]];
 function renderNav() {
   document.getElementById("nav").innerHTML = TABS.map(([id, ic, l]) =>
     `<button class="${tab === id ? "on" : ""}" onclick="go('${id}')"><span>${ic}</span>${l}</button>`).join("");
@@ -484,6 +492,7 @@ function viewToday() {
   return `
   ${!standalone ? `<div class="install">📲 Tip: tik in Safari op <b>Delen</b> → <b>Zet op beginscherm</b>. Dan werkt FitMaatje als een echte app.</div>` : ""}
   ${!S.apiKey ? `<div class="card"><h2>Welkom bij FitMaatje 👋</h2><div class="muted">Stel eerst je naam, doelen en API-sleutel in.</div><br><button class="btn" onclick="go('settings')">Naar instellingen</button></div>` : ""}
+  ${supportCard()}
   <div class="datebar"><button onclick="viewDate=addDays(viewDate,-1);render()">◀</button><h1>${isToday ? "Vandaag" : fmtDate(viewDate)}</h1><button onclick="if(viewDate<todayStr()){viewDate=addDays(viewDate,1);render()}">▶</button></div>
   <div class="card">
     <div class="big">${s.kcal} / ${S.kcal} kcal</div>
@@ -586,15 +595,71 @@ async function ateMeal(moment) {
   await save(); render();
 }
 
+
+// ======================================================= coachteam en directe hulp
+const COACHES = [
+  { id: "ayse", name: "Ayse", role: "Coördinator", task: "Maak één overzichtelijk dagplan. Stem voeding, bewegen en motivatie op elkaar af." },
+  { id: "sara", name: "Sara de Vries", role: "Voeding", task: "Help met gewone vullende maaltijden, porties en praktische alternatieven bij zoete trek." },
+  { id: "milan", name: "Milan Vermeer", role: "Beweging", task: "Maak bewegen haalbaar. Vraag naar rugklachten en beperkingen; geen strafsport of zware oefeningen bij pijn." },
+  { id: "emma", name: "Emma Bakker", role: "Motivatie", task: "Help zonder oordeel bij zoete trek, stress en terugval. Kies één kleine volgende stap." },
+  { id: "noor", name: "Noor Jansen", role: "Voortgang", task: "Bespreek werkelijk gelogde gewichtstrends over meerdere weken. Geen dieetwijziging op basis van één uitschieter." },
+];
+const HELP = {
+  sweet: { label: "Ik wil zoet", text: "Sta even stil: heb je honger, of vooral zin in een bepaalde smaak? Bij honger kun je iets vullends nemen, zoals yoghurt met fruit. Kies je iets zoets, leg een portie op een bordje en berg de verpakking op.", question: "Ik heb sterke trek in zoet. Help me één haalbare stap te kiezen en vraag wanneer die trek komt en wat ik dan meestal eet." },
+  extra: { label: "Ik heb meer gegeten", text: "Je hoeft niets te herstellen met vasten of extra sporten. Ga bij je volgende maaltijd verder met je normale plan. Noteer wat er gebeurde als dat helpt; één moment bepaalt je hele traject niet.", question: "Ik heb meer gegeten dan ik wilde. Help me zonder schuldgevoel mijn gewone eetpatroon te hervatten." },
+  quit: { label: "Ik wil opgeven", text: "Maak het voor dit moment kleiner. Kies één stap: je volgende maaltijd plannen, iets klaarmaken voor morgen of iemand vertellen dat je steun nodig hebt. Vandaag hoeft niet perfect te zijn.", question: "Ik vind afvallen nu moeilijk en wil opgeven. Help me één kleine volgende stap te kiezen." },
+};
+function supportCard() {
+  const help = HELP[helpChoice];
+  return `<div class="card"><h2>Ik heb het moeilijk</h2><div class="muted">Je hoeft het niet alleen uit te zoeken. Kies wat er speelt.</div>
+  <div class="chips">${Object.entries(HELP).map(([id,h])=>`<button onclick="chooseHelp('${id}')" aria-pressed="${helpChoice===id}">${esc(h.label)}</button>`).join("")}</div>
+  ${help ? `<div role="status" style="margin-top:12px">${esc(help.text)}</div><button class="btn" style="margin-top:12px" onclick="helpToCoach()" ${chatBusy ? "disabled" : ""}>Bespreek dit met Emma</button><div class="muted small" style="margin-top:6px">Deze eerste stap werkt ook zonder verbinding.</div>` : ""}
+  <div class="chips"><button onclick="startCheck('morning')">☀️ Ochtendcheck</button><button onclick="startCheck('evening')">🌙 Avondcheck</button></div></div>`;
+}
+function chooseHelp(id) { helpChoice = HELP[id] ? id : ""; render(); }
+function selectCoach(id) { if (chatBusy) return; activeCoach = COACHES.some(c=>c.id===id) ? id : "ayse"; go("coach"); }
+function teamCard() {
+  return `<div class="card"><h2>Kies je coach</h2><div class="chips">${COACHES.map(c=>`<button onclick="selectCoach('${c.id}')" aria-pressed="${activeCoach===c.id}" ${chatBusy ? "disabled" : ""}><b>${esc(c.name)}</b><br>${esc(c.role)}${activeCoach===c.id ? " · gekozen" : ""}</button>`).join("")}</div><div class="muted small" style="margin-top:10px">Eén gedeeld gesprek, ieder met een eigen aandachtspunt.</div></div>`;
+}
+function draftCoach(id, text) {
+  if (chatBusy) return;
+  activeCoach = id; go("coach");
+  const q = document.getElementById("q"); q.value = text; q.focus();
+  q.scrollIntoView({block:"center",behavior:"smooth"});
+}
+function helpToCoach() { const h = HELP[helpChoice]; if(h) draftCoach("emma", h.question); }
+function startCheck(kind) {
+  draftCoach("ayse", kind === "morning" ? "Ochtendcheck: help me met mijn eetplan en haalbare acties vandaag. Vraag naar mijn slaap, energie en dagplanning." : "Avondcheck: vraag naar wat ik gegeten heb, beweging, energie en zoete trek. Help me één verbetering voor morgen te kiezen.");
+}
+function progressCard() {
+  const w=lastWeight(), current=w ? Number(w.weight) : Number(S.startWeight), start=Number(S.startWeight), goal=Number(S.goalWeight);
+  const valid=start>0 && goal>0 && current>0 && start>goal;
+  const pct=valid ? Math.max(0,Math.min(100,(start-current)/(start-goal)*100)) : 0;
+  return `<div class="card"><h2>Mijn voortgang</h2><div>${current>0 ? `${current} kg${w ? " · laatst gelogd" : " · startgewicht"}` : "Log je gewicht om je voortgang te volgen."}${goal>0 ? ` · gewenst einddoel ${goal} kg` : ""}</div>
+  ${valid ? `<div class="bar" role="progressbar" aria-label="Voortgang naar gewenst einddoel" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"><div style="width:${pct}%"></div></div>` : ""}
+  <div class="muted small">Bekijk de trend over meerdere weken. Een losse meting is geen oordeel.</div><div class="chips"><button onclick="draftCoach('noor','Bespreek mijn voortgang op basis van mijn gelogde gegevens. Benoem wat nog ontbreekt.')">Vraag Noor</button><button onclick="go('settings')">Mijn profiel</button></div>
+  <button class="btn out" style="margin-top:12px" onclick="copyOverview()">Overzicht kopiëren voor ChatGPT</button><div role="status" class="muted small" style="margin-top:8px">${esc(copyStatus)}</div>
+  <textarea id="shareOverview" class="hidden" readonly aria-label="Overzicht om handmatig te kopiëren"></textarea>
+  <div class="muted small" style="margin-top:6px">Plak dit zelf in je gesprek met Ayse. Je API-sleutel wordt niet meegenomen.</div></div>`;
+}
+function overviewText() {
+  return `FitMaatje-overzicht voor mijn dieetbegeleiding\nNaam: ${S.name || "niet ingevuld"}\nLengte: ${S.heightCm || "niet ingevuld"} cm\nStartgewicht: ${S.startWeight || "niet ingevuld"} kg\nGewenst einddoel: ${S.goalWeight || "niet ingevuld"} kg\nStartdatum: ${S.startDate || "niet ingevuld"}\nVoorkeuren: ${S.prefs || "niet ingevuld"}\nAandachtspunten: ${S.healthNotes || "niet ingevuld"}\n\n${contextText(7)}\nBegeleid me met één haalbare volgende stap. De gelogde calorieën zijn schattingen; ontbrekende logs betekenen niet dat ik niets gegeten heb.`;
+}
+async function copyOverview() {
+  const text=overviewText();
+  try { await navigator.clipboard.writeText(text); copyStatus="Gekopieerd. Plak het in je ChatGPT-gesprek met Ayse."; render(); }
+  catch(e) { copyStatus="Kopiëren lukt hier niet automatisch. Selecteer en kopieer de tekst hieronder."; render(); const el=document.getElementById("shareOverview"); el.classList.remove("hidden"); el.value=text; el.focus(); el.select(); }
+}
+
 function viewCoach() {
-  let h = `<div class="row"><h1 class="grow">Coach</h1><button class="link" onclick="if(confirm('Gesprek wissen?')){chat=[];save();render()}">Wissen</button></div>`;
+  let h = `<h1>Mijn coachteam</h1>${supportCard()}${teamCard()}${progressCard()}<div class="row"><h2 class="grow">Gesprek met ${esc((COACHES.find(c=>c.id===activeCoach)||COACHES[0]).name)}</h2><button class="link" onclick="if(confirm('Gesprek wissen?')){chat=[];save();render()}">Wissen</button></div>`;
   if (!chat.length) h += `<div class="muted">Vraag wat je wilt. Bijvoorbeeld:</div><div class="chips">${[
     "Wat kan ik vanavond nog eten met wat ik over heb?", "Geef me een training van 20 minuten thuis met voorbeelden.", "Hoe ging mijn week?",
   ].map((s) => `<button onclick="document.getElementById('q').value=this.textContent">${esc(s)}</button>`).join("")}</div><br>`;
-  h += `<div class="chat">${chat.map((m) => {
+  h += `<div class="card muted small">De coaches zijn AI-rollen via je ingestelde Claude-verbinding. Ze delen dit dagboek en gesprek. De check-ins in ChatGPT verschijnen hier niet automatisch.</div><div class="chat">${chat.map((m) => {
     if (m.me) return `<div class="bubble me">${esc(m.t)}</div>`;
     const [body, vids] = splitVideos(m.t);
-    return `<div class="bubble">${esc(body)}${vids.length ? `<div class="muted small" style="margin-top:8px">Bekijk hoe het moet:</div>` +
+    return `<div class="bubble">${m.coach ? `<b>${esc(m.coach)}</b><br>` : ""}${esc(body)}${vids.length ? `<div class="muted small" style="margin-top:8px">Bekijk hoe het moet:</div>` +
       vids.map((v) => `<a class="vid" style="text-decoration:none" href="${ytUrl(v.q)}" target="_blank" rel="noopener">▶ ${esc(v.name)}</a>`).join("") : ""}</div>`;
   }).join("")}${chatBusy ? `<div class="muted"><span class="spinner"></span>Coach denkt na…</div>` : ""}</div>
   <div class="composer">${SR ? `<button class="round" data-mic="q" onclick="recActive&&recTarget==='q'?stopDictation():startDictation('q')">🎤</button>` : ""}
@@ -609,6 +674,10 @@ function viewSettings() {
   return `<h1>Instellingen</h1>
   <div class="card"><h2>Over jou</h2>
     ${f("s_name", "Naam", S.name)}
+    ${f("s_height", "Lengte (cm)", S.heightCm, "number", 'min="100" max="250" step="0.1"')}
+    <div class="row"><div class="grow">${f("s_startweight", "Startgewicht (kg)", S.startWeight, "number", 'min="30" max="400" step="0.1"')}</div><div class="grow">${f("s_goalweight", "Gewenst einddoel (kg)", S.goalWeight, "number", 'min="30" max="400" step="0.1"')}</div></div>
+    ${f("s_startdate", "Startdatum", S.startDate, "date")}
+    <label for="s_health">Gezondheid, medicatie en aandachtspunten (bijv. zoete trek)</label><textarea id="s_health">${esc(S.healthNotes)}</textarea>
     <div class="row"><div class="grow">${f("s_kcal", "kcal per dag", S.kcal, "number", 'inputmode="numeric"')}</div><div class="grow">${f("s_prot", "eiwit (g)", S.protein, "number", 'inputmode="numeric"')}</div></div>
     ${f("s_mom", "Eetmomenten (bijv. 07:30,10:00,12:30,15:30,18:00,20:30)", S.moments)}
     <label for="s_proto">Plan / afspraken met coach of diëtist</label><textarea id="s_proto">${esc(S.protocol)}</textarea>
@@ -621,18 +690,23 @@ function viewSettings() {
   </div>
   <button class="btn" onclick="saveSettings()">Opslaan</button>
   <div id="saved" class="muted" style="margin-top:8px"></div>
-  <div class="card" style="margin-top:16px"><h2>Gegevens</h2><div class="muted small">Alles wordt alleen op deze telefoon bewaard (in Safari). Verwijder je de app van je beginscherm of wis je Safari-gegevens, dan ben je ze kwijt.</div><br>
+  <div class="card" style="margin-top:16px"><h2>Gegevens</h2><div class="muted small">Je dagboek en instellingen worden lokaal in deze browser bewaard. Wis je browsergegevens, dan kunnen ze verloren gaan. Voor AI-advies worden relevante gegevens naar Anthropic gestuurd. Maak regelmatig een back-up.</div><br>
   <button class="btn out" onclick="exportData()">Back-up downloaden</button></div>`;
 }
 async function saveSettings() {
   const v = (id) => document.getElementById(id).value;
+  const height = Number(v("s_height")), start = Number(v("s_startweight")), goal = Number(v("s_goalweight"));
+  if ((v("s_height") && (height < 100 || height > 250)) || (v("s_startweight") && (start < 30 || start > 400)) || (v("s_goalweight") && (goal < 30 || goal > 400))) {
+    document.getElementById("saved").textContent = "Controleer je lengte en gewichten."; return;
+  }
+  S.heightCm = v("s_height"); S.startWeight = v("s_startweight"); S.goalWeight = v("s_goalweight"); S.startDate = v("s_startdate"); S.healthNotes = v("s_health").trim();
   S.name = v("s_name").trim(); S.kcal = parseInt(v("s_kcal")) || DEF.kcal; S.protein = parseInt(v("s_prot")) || DEF.protein;
   S.moments = v("s_mom").trim() || DEF.moments; S.protocol = v("s_proto").trim() || DEF.protocol; S.prefs = v("s_prefs").trim();
   S.apiKey = v("s_key").trim(); S.model = v("s_model").trim() || DEF.model;
   await save(); document.getElementById("saved").textContent = "Opgeslagen ✓";
 }
 function exportData() {
-  const blob = new Blob([JSON.stringify({ settings: { ...S, apiKey: "" }, entries, plans }, null, 1)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify({ settings: { ...S, apiKey: "" }, entries, plans, chat }, null, 1)], { type: "application/json" });
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "fitmaatje-backup-" + todayStr() + ".json"; a.click();
 }
 
@@ -652,10 +726,11 @@ function render() {
   S = { ...DEF, ...(await DB.get("settings", {})) };
   entries = await DB.get("entries", []); plans = await DB.get("plans", {}); chat = await DB.get("chat", []);
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-  if (!S.apiKey) tab = "settings";
+  // Het coachteam en directe hulp zijn ook zonder API-sleutel bereikbaar.
   render();
 })();
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { if (viewDate > todayStr()) viewDate = todayStr(); render(); } });
 </script>
 </body>
 </html>
+
